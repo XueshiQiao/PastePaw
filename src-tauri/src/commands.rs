@@ -1159,3 +1159,27 @@ pub fn get_layout_config() -> serde_json::Value {
         "window_height": crate::constants::WINDOW_HEIGHT,
     })
 }
+
+#[tauri::command]
+pub async fn get_available_update(
+    app: AppHandle,
+    update_manager: tauri::State<'_, Arc<crate::updater::UpdateManager>>,
+) -> Result<Option<String>, String> {
+    Ok(update_manager.get_available_version(&app).await)
+}
+
+#[tauri::command]
+pub async fn check_update_now(
+    app: AppHandle,
+    update_manager: tauri::State<'_, Arc<crate::updater::UpdateManager>>,
+) -> Result<Option<String>, String> {
+    update_manager.check_for_updates(&app).await
+}
+
+#[tauri::command]
+pub async fn install_update(
+    app: AppHandle,
+    update_manager: tauri::State<'_, Arc<crate::updater::UpdateManager>>,
+) -> Result<(), String> {
+    update_manager.install_update(&app).await
+}

@@ -2,6 +2,21 @@
 
 All notable changes to PastePaw will be documented in this file.
 
+## v1.3.9
+
+### Added
+- Added automatic background update check mechanism with non-intrusive UI indicator in the main window and a direct update button in the Settings footer (#15)
+
+### Changed
+- Unified all toolbar icon colors (Add, Update, Settings) to adapt seamlessly to the system theme
+
+### 新增
+- 增加后台静默更新检测机制，在主界面显示无打扰更新图标，并在设置页底部提供直接更新按钮 (#15)
+
+### 修改
+- 统一主界面工具栏图标（添加、更新、设置）颜色，使其与系统主题完美适配
+
+
 ## v1.3.8
 
 ### Added

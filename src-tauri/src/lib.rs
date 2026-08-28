@@ -24,6 +24,7 @@ mod database;
 mod models;
 mod settings_commands;
 mod settings_manager;
+pub mod updater;
 
 use database::Database;
 use models::get_runtime;
@@ -209,6 +210,11 @@ pub fn run_app() {
             });
             app.manage(Arc::new(settings_manager));
 
+            // Initialize Update Manager and start background check loop
+            let update_manager = Arc::new(updater::UpdateManager::new());
+            update_manager.start_background_loop(app.handle().clone());
+            app.manage(update_manager);
+
             let _ = app.track_event("startup", None);
             log::info!("Database path: {}", db_path_str);
             if let Ok(log_dir) = app.path().app_log_dir() {
@@ -348,7 +354,10 @@ pub fn run_app() {
             commands::test_log,
             commands::ai_process_clip,
             commands::focus_window,
-            commands::refresh_window
+            commands::refresh_window,
+            commands::get_available_update,
+            commands::check_update_now,
+            commands::install_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

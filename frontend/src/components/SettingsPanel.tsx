@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   Eye,
   EyeOff,
+  ArrowUpCircle,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTheme } from '../hooks/useTheme';
@@ -20,13 +21,12 @@ import { FlaskConical } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getVersion } from '@tauri-apps/api/app';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { check } from '@tauri-apps/plugin-updater';
-import { relaunch } from '@tauri-apps/plugin-process';
 import { toast } from 'sonner';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Select } from './ui/Select';
 import { useShortcutRecorder } from 'use-shortcut-recorder';
 import { clsx } from 'clsx';
+import { useAutoUpdater } from '../hooks/useAutoUpdater';
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -111,6 +111,9 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
   const [newFolderName, setNewFolderName] = useState('');
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+
+  const { updateAvailable, setUpdateAvailable } = useAutoUpdater('SettingsPanel');
+  console.log('[SettingsPanel:Render] updateAvailable state:', updateAvailable);
 
   // Apply theme immediately when settings.theme changes
   useTheme(settings.theme);
@@ -362,35 +365,39 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
     setIsRecordingMode(false);
   };
 
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleDownloadAndInstall = async () => {
+    try {
+      setIsUpdating(true);
+      const dlToast = toast.loading(t('settings.downloadingUpdate', { defaultValue: 'Downloading & installing update...' }));
+      await invoke('install_update');
+      toast.dismiss(dlToast);
+    } catch (e) {
+      console.error('Update failed:', e);
+      toast.error(`Update failed: ${e}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleCheckUpdate = async () => {
     try {
-      const loadingToast = toast.loading('Checking for updates...');
-      const update = await check();
+      setIsUpdating(true);
+      const loadingToast = toast.loading(t('settings.checkingUpdates'));
+      const version = await invoke<string | null>('check_update_now');
       toast.dismiss(loadingToast);
 
-      if (update && update.available) {
-        toast.info(`Update v${update.version} available!`, {
-          duration: 10000,
-          action: {
-            label: 'Download & Restart',
-            onClick: async () => {
-              try {
-                const dlToast = toast.loading(`Downloading v${update.version}...`);
-                await update.downloadAndInstall();
-                toast.dismiss(dlToast);
-                toast.success('Update installed. Restarting...');
-                await relaunch();
-              } catch (e) {
-                toast.error(`Update failed: ${e}`);
-              }
-            },
-          },
-        });
+      if (version) {
+        setUpdateAvailable(version);
+        toast.info(t('settings.updateAvailable', { version }));
       } else {
-        toast.success('You are on the latest version.');
+        toast.success(t('settings.noUpdates'));
       }
     } catch (e) {
-      toast.error(`Check failed: ${e}`);
+      toast.error(t('settings.updateError'));
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -796,6 +803,8 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
                       </button>
                     </div>
                   </section>
+
+
                 </>
               )}
 
@@ -1080,9 +1089,20 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
               © 2026 PastePaw
             </a>
             <span>•</span>
-            <button onClick={handleCheckUpdate} className="underline hover:text-foreground">
-              {t('settings.checkForUpdates')}
-            </button>
+            {updateAvailable ? (
+              <button
+                onClick={handleDownloadAndInstall}
+                disabled={isUpdating}
+                className="flex items-center gap-1 rounded bg-blue-600 px-2 py-0.5 font-medium text-white shadow-sm transition-all hover:bg-blue-500 hover:shadow disabled:opacity-50"
+              >
+                <ArrowUpCircle size={12} className={clsx(isUpdating && 'animate-spin')} />
+                {isUpdating ? t('settings.updating', { defaultValue: 'Updating...' }) : `Update to v${updateAvailable}`}
+              </button>
+            ) : (
+              <button onClick={handleCheckUpdate} className="underline hover:text-foreground">
+                {t('settings.checkForUpdates')}
+              </button>
+            )}
           </div>
         </div>
       </div>

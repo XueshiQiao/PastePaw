@@ -16,6 +16,7 @@ import { useTheme } from './hooks/useTheme';
 import { useLanguage } from './hooks/useLanguage';
 import { useTranslation } from 'react-i18next';
 import { Toaster, toast } from 'sonner';
+import { useAutoUpdater } from './hooks/useAutoUpdater';
 import { LAYOUT } from './constants';
 import { generateDemoClips } from './debug/demoData';
 
@@ -71,6 +72,9 @@ function App() {
     message: '',
     action: async () => {},
   });
+
+  const { updateAvailable } = useAutoUpdater('AppMain');
+  console.log('[AppMain:Render] updateAvailable state:', updateAvailable);
 
   // Using refs for event handlers to access latest state without re-attaching listeners
   const dragStateRef = useRef({
@@ -814,6 +818,7 @@ function App() {
               if (folderId) handleContextMenu(e, 'folder', folderId);
             }}
             theme={effectiveTheme}
+            updateAvailable={updateAvailable}
           />
 
           <main data-el="clip-list-area" className="no-scrollbar relative flex-1 overflow-hidden">

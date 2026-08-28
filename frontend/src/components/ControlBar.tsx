@@ -1,5 +1,5 @@
 import { FolderItem } from '../types';
-import { Search, Plus, MoreHorizontal, X } from 'lucide-react';
+import { Search, Plus, MoreHorizontal, X, ArrowUpCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 
@@ -22,6 +22,7 @@ interface ControlBarProps {
   onFolderContextMenu?: (e: React.MouseEvent, folderId: string) => void;
   theme?: 'light' | 'dark';
   style?: React.CSSProperties;
+  updateAvailable?: string | null;
 }
 
 export function ControlBar({
@@ -42,6 +43,7 @@ export function ControlBar({
   onFolderContextMenu,
   theme = 'dark',
   style,
+  updateAvailable,
 }: ControlBarProps) {
   const { t } = useTranslation();
 
@@ -359,14 +361,24 @@ export function ControlBar({
         <button
           data-el="add-folder-btn"
           onClick={onAddClick}
-          className="rounded-lg p-2 text-emerald-400 transition-colors hover:bg-emerald-500/10"
+          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          title={t('folders.add')}
         >
           <Plus size={20} />
         </button>
+        {updateAvailable && (
+          <button
+            onClick={onMoreClick}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={t('settings.updateAvailable', { version: updateAvailable })}
+          >
+            <ArrowUpCircle size={20} />
+          </button>
+        )}
         <button
           data-el="settings-btn"
           onClick={onMoreClick}
-          className="rounded-lg p-2 text-amber-400 transition-colors hover:bg-amber-500/10"
+          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <MoreHorizontal size={20} />
         </button>
