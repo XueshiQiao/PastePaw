@@ -693,15 +693,6 @@ function App() {
     if (!folderId) return;
     try {
       await invoke('delete_folder', { id: folderId });
-      if (selectedFolder === folderId) {
-        selectedFolderRef.current = null;
-        setSelectedFolder(null);
-        setSelectedClipId(null);
-        setClipListResetToken((prev) => prev + 1);
-        loadClips(null, false, searchQuery);
-      }
-      await loadFolders();
-      refreshTotalCount();
       toast.success(t('folders.folderDeleted'));
     } catch (error) {
       console.error('Failed to delete folder:', error);
