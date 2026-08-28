@@ -711,19 +711,39 @@ pub async fn delete_folder(
 
     let folder_id: i64 = id.parse().map_err(|_| "Invalid folder ID")?;
 
+    // Fetch image file paths BEFORE deleting clips, because ON DELETE CASCADE
+    // on clip_images will remove the rows automatically, leaking files on disk.
+    let paths_to_delete: Vec<Option<String>> = sqlx::query_scalar(
+        r#"SELECT ci.file_path FROM clip_images ci
+           JOIN clips c ON ci.clip_uuid = c.uuid
+           WHERE c.folder_id = ?"#,
+    )
+    .bind(folder_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    for path in paths_to_delete.into_iter().flatten() {
+        if !path.is_empty() {
+            crate::clipboard::remove_full_image_file(&path);
+        }
+    }
+
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
     sqlx::query(r#"DELETE FROM clips WHERE folder_id = ?"#)
         .bind(folder_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| e.to_string())?;
-
-    cleanup_orphan_clip_image_files(pool).await?;
 
     sqlx::query(r#"DELETE FROM folders WHERE id = ?"#)
         .bind(folder_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
 
     let _ = window.app_handle().emit("clipboard-change", ());
     Ok(())
@@ -969,22 +989,46 @@ pub async fn clear_all_clips(
     let should_preserve = preserve_folders.unwrap_or(true);
 
     if should_preserve {
+        // Fetch image file paths BEFORE deleting clips, because ON DELETE CASCADE
+        // on clip_images will remove the rows automatically, leaking files on disk.
+        let paths_to_delete: Vec<Option<String>> = sqlx::query_scalar(
+            r#"SELECT ci.file_path FROM clip_images ci
+               JOIN clips c ON ci.clip_uuid = c.uuid
+               WHERE c.folder_id IS NULL"#,
+        )
+        .fetch_all(pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        for path in paths_to_delete.into_iter().flatten() {
+            if !path.is_empty() {
+                crate::clipboard::remove_full_image_file(&path);
+            }
+        }
+
+        let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
         sqlx::query(r#"DELETE FROM clips WHERE folder_id IS NULL"#)
-            .execute(pool)
+            .execute(&mut *tx)
             .await
             .map_err(|e| e.to_string())?;
-        cleanup_orphan_clip_image_files(pool).await?;
+
+        tx.commit().await.map_err(|e| e.to_string())?;
     } else {
         cleanup_all_clip_image_files(pool).await?;
 
+        let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
         sqlx::query(r#"DELETE FROM clip_images"#)
-            .execute(pool)
+            .execute(&mut *tx)
             .await
             .map_err(|e| e.to_string())?;
         sqlx::query(r#"DELETE FROM clips"#)
-            .execute(pool)
+            .execute(&mut *tx)
             .await
             .map_err(|e| e.to_string())?;
+
+        tx.commit().await.map_err(|e| e.to_string())?;
     }
 
     let _ = window.app_handle().emit("clipboard-change", ());
