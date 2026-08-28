@@ -2,6 +2,30 @@
 
 All notable changes to PastePaw will be documented in this file.
 
+## v1.3.8
+
+### Added
+- Configurable Auto-Paste shortcut method (Shift + Insert / Ctrl + V) with extended virtual key event simulation (#13)
+- Confirmation dialog when deleting folders, with cascading deletion of folder clips and associated images (#14)
+- Option to preserve saved folder items when clearing clipboard history (#11)
+
+### Fixed
+- Fixed multi-monitor and mixed-DPI display coordinate scaling issues (#9)
+- Fixed backdrop material (Mica / Mica Alt / Clear) and dark theme persistence across system sleep, wake, and lock screen (#10)
+- Fixed default selection and scroll reset to the first clip upon window reopen or receiving new clips (#12)
+- Fixed clip list falling into an empty state when deleting the currently selected folder by automatically switching back to All Clips (#14)
+
+### 新增
+- 支持在设置中选择自动粘贴快捷键模式（Shift + Insert / Ctrl + V），并增强虚拟按键事件模拟与终端兼容性 (#13)
+- 删除文件夹时增加确认对话框，并支持级联删除文件夹内的历史项及磁盘关联图片 (#14)
+- 清空剪贴板历史时默认保留已保存至文件夹中的项目 (#11)
+
+### 修复
+- 修复多显示器及不同 DPI 缩放下的窗口定位与尺寸错位问题 (#9)
+- 修复在系统休眠、锁屏唤醒后 Mica/Mica Alt/Clear 材质与深色主题属性失效的问题 (#10)
+- 修复重新唤出窗口或接收新剪贴板内容时未自动定位并选中第一项的问题 (#12)
+- 修复删除当前选中的文件夹后未自动回退至"全部历史"导致列表显示为空的问题 (#14)
+
 ## v1.3.7
 
 ### Added
