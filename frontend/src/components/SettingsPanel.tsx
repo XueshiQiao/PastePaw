@@ -272,8 +272,9 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
       message: t('settings.clearHistoryMessage'),
       action: async () => {
         try {
-          await invoke('clear_all_clips');
-          setHistorySize(0);
+          await invoke('clear_all_clips', { preserveFolders: true });
+          const newSize = await invoke<number>('get_clipboard_history_size');
+          setHistorySize(newSize);
           toast.success(t('settings.clearHistorySuccess'));
         } catch (error) {
           console.error('Failed to clear history:', error);

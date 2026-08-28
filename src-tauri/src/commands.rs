@@ -960,19 +960,34 @@ pub async fn clear_clipboard_history(db: tauri::State<'_, Arc<Database>>) -> Res
 }
 
 #[tauri::command]
-pub async fn clear_all_clips(db: tauri::State<'_, Arc<Database>>) -> Result<(), String> {
+pub async fn clear_all_clips(
+    preserve_folders: Option<bool>,
+    db: tauri::State<'_, Arc<Database>>,
+    window: tauri::WebviewWindow,
+) -> Result<(), String> {
     let pool = &db.pool;
+    let should_preserve = preserve_folders.unwrap_or(true);
 
-    cleanup_all_clip_image_files(pool).await?;
+    if should_preserve {
+        sqlx::query(r#"DELETE FROM clips WHERE folder_id IS NULL"#)
+            .execute(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+        cleanup_orphan_clip_image_files(pool).await?;
+    } else {
+        cleanup_all_clip_image_files(pool).await?;
 
-    sqlx::query(r#"DELETE FROM clip_images"#)
-        .execute(pool)
-        .await
-        .map_err(|e| e.to_string())?;
-    sqlx::query(r#"DELETE FROM clips"#)
-        .execute(pool)
-        .await
-        .map_err(|e| e.to_string())?;
+        sqlx::query(r#"DELETE FROM clip_images"#)
+            .execute(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+        sqlx::query(r#"DELETE FROM clips"#)
+            .execute(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    let _ = window.emit("clipboard-change", ());
     Ok(())
 }
 
