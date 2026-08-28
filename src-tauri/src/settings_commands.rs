@@ -1,5 +1,4 @@
 use crate::settings_manager::SettingsManager;
-use dark_light::Mode;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 
@@ -48,20 +47,7 @@ pub async fn save_settings(app: AppHandle, settings: serde_json::Value) -> Resul
     );
     match app.get_webview_window("main") {
         Some(win) => {
-            let current_theme = if theme_str == "light" {
-                tauri::Theme::Light
-            } else if theme_str == "dark" {
-                tauri::Theme::Dark
-            } else {
-                let mode = dark_light::detect().map_err(|e| {
-                    log::error!("save_settings: dark_light::detect() failed: {:?}", e);
-                    e.to_string()
-                })?;
-                match mode {
-                    Mode::Dark => tauri::Theme::Dark,
-                    _ => tauri::Theme::Light,
-                }
-            };
+            let current_theme = crate::get_effective_theme(&win, &theme_str);
             crate::apply_window_effect(&win, &mica_effect, &current_theme, round_corners);
         }
         None => {

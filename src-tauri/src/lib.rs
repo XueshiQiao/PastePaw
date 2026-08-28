@@ -132,11 +132,9 @@ pub fn run_app() {
                         let round_corners = settings.round_corners;
 
                         log::info!("THEME:Re-applying window effect due to theme change. Current theme setting: {:?}, system theme: {:?}, mica_effect setting: {:?}", current_theme, theme_, mica_effect);
-                        // If app is set to follow system, we re-apply based on the NEW system theme
-                        if current_theme == "system" {
-                            if let Some(webview_win) = app_handle.get_webview_window(&label) {
-                                crate::apply_window_effect(&webview_win, &mica_effect, &theme_, round_corners);
-                            }
+                        if let Some(webview_win) = app_handle.get_webview_window(&label) {
+                            let effective_theme = get_effective_theme(&webview_win, &current_theme);
+                            crate::apply_window_effect(&webview_win, &mica_effect, &effective_theme, round_corners);
                         }
                     });
                 }
@@ -273,17 +271,7 @@ pub fn run_app() {
                 let theme = settings.theme;
                 let round_corners = settings.round_corners;
 
-                // get current system theme
-                let current_theme = if theme == "light" {
-                    tauri::Theme::Light
-                } else if theme == "dark" {
-                    tauri::Theme::Dark
-                } else {
-                    win.theme().unwrap_or_else(|err| {
-                        log::error!("THEME:Failed to get system theme: {:?}, defaulting to Light", err);
-                        tauri::Theme::Light
-                    })
-                };
+                let current_theme = get_effective_theme(&win, &theme);
 
                 log::info!("THEME:Applying window effect: {} with theme: {:?} (setting:{:?})", mica_effect, current_theme, theme);
 
@@ -366,7 +354,32 @@ pub fn run_app() {
         .expect("error while running tauri application");
 }
 
+pub fn get_effective_theme(window: &tauri::WebviewWindow, theme_setting: &str) -> tauri::Theme {
+    match theme_setting {
+        "dark" => tauri::Theme::Dark,
+        "light" => tauri::Theme::Light,
+        _ => {
+            if let Ok(mode) = dark_light::detect() {
+                match mode {
+                    dark_light::Mode::Dark => tauri::Theme::Dark,
+                    _ => tauri::Theme::Light,
+                }
+            } else {
+                window.theme().unwrap_or(tauri::Theme::Light)
+            }
+        }
+    }
+}
+
 pub fn position_window_at_bottom(window: &tauri::WebviewWindow) {
+    let (mica_effect, theme_setting, round_corners) = {
+        let manager = window.state::<Arc<crate::settings_manager::SettingsManager>>();
+        let s = manager.get();
+        (s.mica_effect, s.theme, s.round_corners)
+    };
+    let effective_theme = get_effective_theme(window, &theme_setting);
+    apply_window_effect(window, &mica_effect, &effective_theme, round_corners);
+
     animate_window_show(window);
 }
 
@@ -419,18 +432,53 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
                 work_area.position.y + work_area.size.height as i32
             };
 
-            let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
-                width: work_area.size.width - (side_margin_px as u32 * 2),
-                height: window_height_px,
-            }));
+            let target_width = (work_area.size.width as i32 - side_margin_px * 2).max(1) as i32;
+            let target_height = window_height_px as i32;
+            let target_x = work_area.position.x + side_margin_px;
 
-            let target_y = reference_bottom - window_height_px as i32 - bottom_margin_px;
+            let target_y = reference_bottom - target_height - bottom_margin_px;
             let start_y = reference_bottom;
 
-            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-                x: work_area.position.x + side_margin_px,
-                y: start_y,
-            }));
+            // Atomically set initial position and size at target monitor coordinates
+            // to avoid DPI double-scaling bugs when moving across monitors with different DPIs.
+            if let Ok(handle) = window.hwnd() {
+                use windows::Win32::Foundation::HWND;
+                use windows::Win32::UI::WindowsAndMessaging::{
+                    SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER,
+                };
+                let hwnd = HWND(handle.0 as _);
+                let z_order = if float_above_taskbar {
+                    Some(HWND(-1 as _)) // HWND_TOPMOST
+                } else {
+                    None
+                };
+                let flags = SWP_NOACTIVATE
+                    | if float_above_taskbar {
+                        windows::Win32::UI::WindowsAndMessaging::SET_WINDOW_POS_FLAGS(0)
+                    } else {
+                        SWP_NOZORDER
+                    };
+                unsafe {
+                    let _ = SetWindowPos(
+                        hwnd,
+                        z_order,
+                        target_x,
+                        start_y,
+                        target_width,
+                        target_height,
+                        flags,
+                    );
+                }
+            } else {
+                let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+                    width: target_width as u32,
+                    height: target_height as u32,
+                }));
+                let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+                    x: target_x,
+                    y: start_y,
+                }));
+            }
 
             let _ = window.show();
             let _ = window.set_focus();
@@ -463,19 +511,58 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
             let dy = (target_y - start_y) as f64 / steps as f64;
 
             for i in 1..=steps {
-                let current_y = start_y as f64 + dy * i as f64;
-                let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-                    x: work_area.position.x + side_margin_px,
-                    y: current_y as i32,
-                }));
+                let current_y = (start_y as f64 + dy * i as f64) as i32;
+                if let Ok(handle) = window.hwnd() {
+                    use windows::Win32::Foundation::HWND;
+                    use windows::Win32::UI::WindowsAndMessaging::{
+                        SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+                    };
+                    let hwnd = HWND(handle.0 as _);
+                    unsafe {
+                        let _ = SetWindowPos(
+                            hwnd,
+                            None,
+                            target_x,
+                            current_y,
+                            0,
+                            0,
+                            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+                        );
+                    }
+                } else {
+                    let _ =
+                        window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+                            x: target_x,
+                            y: current_y,
+                        }));
+                }
                 std::thread::sleep(duration);
             }
 
             // Ensure final position is exact
-            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-                x: work_area.position.x + side_margin_px,
-                y: target_y,
-            }));
+            if let Ok(handle) = window.hwnd() {
+                use windows::Win32::Foundation::HWND;
+                use windows::Win32::UI::WindowsAndMessaging::{
+                    SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER,
+                };
+                let hwnd = HWND(handle.0 as _);
+                unsafe {
+                    let _ = SetWindowPos(
+                        hwnd,
+                        None,
+                        target_x,
+                        target_y,
+                        target_width,
+                        target_height,
+                        SWP_NOZORDER | SWP_NOACTIVATE,
+                    );
+                }
+            } else {
+                let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+                    x: target_x,
+                    y: target_y,
+                }));
+            }
         }
         IS_ANIMATING.store(false, Ordering::SeqCst);
     });
@@ -514,7 +601,13 @@ pub fn animate_window_hide(
     let window = window.clone();
 
     std::thread::spawn(move || {
-        if let Some(monitor) = window.current_monitor().ok().flatten() {
+        let monitor = window
+            .current_monitor()
+            .ok()
+            .flatten()
+            .or_else(|| get_monitor_at_cursor(&window));
+
+        if let Some(monitor) = monitor {
             let scale_factor = monitor.scale_factor();
             let monitor_pos = monitor.position();
             let monitor_size = monitor.size();
@@ -530,6 +623,7 @@ pub fn animate_window_hide(
                 work_area.position.y + work_area.size.height as i32
             };
 
+            let target_x = work_area.position.x + side_margin_px;
             let start_y = reference_bottom - window_height_px as i32 - bottom_margin_px;
             let target_y = reference_bottom;
 
@@ -538,14 +632,36 @@ pub fn animate_window_hide(
             let dy = (target_y - start_y) as f64 / steps as f64;
 
             for i in 1..=steps {
-                let current_y = start_y as f64 + dy * i as f64;
-                let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-                    x: work_area.position.x + side_margin_px,
-                    y: current_y as i32,
-                }));
+                let current_y = (start_y as f64 + dy * i as f64) as i32;
+                if let Ok(handle) = window.hwnd() {
+                    use windows::Win32::Foundation::HWND;
+                    use windows::Win32::UI::WindowsAndMessaging::{
+                        SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+                    };
+                    let hwnd = HWND(handle.0 as _);
+                    unsafe {
+                        let _ = SetWindowPos(
+                            hwnd,
+                            None,
+                            target_x,
+                            current_y,
+                            0,
+                            0,
+                            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+                        );
+                    }
+                } else {
+                    let _ =
+                        window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+                            x: target_x,
+                            y: current_y,
+                        }));
+                }
                 std::thread::sleep(duration);
             }
 
+            let _ = window.hide();
+        } else {
             let _ = window.hide();
         }
         IS_ANIMATING.store(false, Ordering::SeqCst);
@@ -566,26 +682,46 @@ fn get_data_dir() -> std::path::PathBuf {
 
 pub fn get_monitor_at_cursor(window: &tauri::WebviewWindow) -> Option<tauri::Monitor> {
     use windows::Win32::Foundation::POINT;
+    use windows::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+    };
     use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+
     let mut point = POINT { x: 0, y: 0 };
-    let mut found = None;
     if unsafe { GetCursorPos(&mut point).is_ok() } {
-        if let Ok(monitors) = window.available_monitors() {
-            for m in monitors {
-                let pos = m.position();
-                let size = m.size();
-                if point.x >= pos.x
-                    && point.x < pos.x + size.width as i32
-                    && point.y >= pos.y
-                    && point.y < pos.y + size.height as i32
-                {
-                    found = Some(m);
-                    break;
+        let hmonitor = unsafe { MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST) };
+        if !hmonitor.is_invalid() {
+            let mut info = MONITORINFO {
+                cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+                ..Default::default()
+            };
+            if unsafe { GetMonitorInfoW(hmonitor, &mut info).as_bool() } {
+                if let Ok(monitors) = window.available_monitors() {
+                    // Try exact match by monitor rectangle coordinates
+                    for m in &monitors {
+                        let pos = m.position();
+                        if pos.x == info.rcMonitor.left && pos.y == info.rcMonitor.top {
+                            return Some(m.clone());
+                        }
+                    }
+                    // Fallback to bounding box check against cursor point
+                    for m in &monitors {
+                        let pos = m.position();
+                        let size = m.size();
+                        if point.x >= pos.x
+                            && point.x < pos.x + size.width as i32
+                            && point.y >= pos.y
+                            && point.y < pos.y + size.height as i32
+                        {
+                            return Some(m.clone());
+                        }
+                    }
                 }
             }
         }
     }
-    found.or_else(|| window.current_monitor().ok().flatten())
+
+    window.current_monitor().ok().flatten()
 }
 
 pub fn apply_window_effect(
