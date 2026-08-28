@@ -34,7 +34,8 @@ use windows::Win32::System::ProcessStatus::{GetModuleBaseNameW, GetModuleFileNam
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_INSERT, VK_SHIFT,
+    SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_CONTROL,
+    VK_INSERT, VK_SHIFT,
 };
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Shell::{
@@ -126,7 +127,6 @@ struct ClipboardImageRead {
     decode_ms: u128,
     source_type: &'static str,
 }
-
 
 fn read_clipboard_image_with_clipboard_rs(
     source_type: &'static str,
@@ -832,52 +832,95 @@ unsafe fn extract_icon(path: &str) -> Option<String> {
 }
 
 #[cfg(target_os = "windows")]
-pub fn send_paste_input() {
-    log::info!("send_paste_input: sending Shift+Insert");
+pub fn send_paste_input(method: &str) {
     unsafe {
-        let inputs = vec![
-            INPUT {
-                r#type: INPUT_KEYBOARD,
-                Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
-                    ki: KEYBDINPUT {
-                        wVk: VK_SHIFT,
-                        ..Default::default()
+        let inputs = if method == "ctrl_v" {
+            log::info!("send_paste_input: sending Ctrl+V");
+            vec![
+                INPUT {
+                    r#type: INPUT_KEYBOARD,
+                    Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                        ki: KEYBDINPUT {
+                            wVk: VK_CONTROL,
+                            ..Default::default()
+                        },
                     },
                 },
-            },
-            INPUT {
-                r#type: INPUT_KEYBOARD,
-                Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
-                    ki: KEYBDINPUT {
-                        wVk: VK_INSERT,
-                        ..Default::default()
+                INPUT {
+                    r#type: INPUT_KEYBOARD,
+                    Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                        ki: KEYBDINPUT {
+                            wVk: VIRTUAL_KEY(0x56),
+                            ..Default::default()
+                        },
                     },
                 },
-            },
-            INPUT {
-                r#type: INPUT_KEYBOARD,
-                Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
-                    ki: KEYBDINPUT {
-                        wVk: VK_INSERT,
-                        dwFlags: KEYEVENTF_KEYUP,
-                        ..Default::default()
+                INPUT {
+                    r#type: INPUT_KEYBOARD,
+                    Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                        ki: KEYBDINPUT {
+                            wVk: VIRTUAL_KEY(0x56),
+                            dwFlags: KEYEVENTF_KEYUP,
+                            ..Default::default()
+                        },
                     },
                 },
-            },
-            INPUT {
-                r#type: INPUT_KEYBOARD,
-                Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
-                    ki: KEYBDINPUT {
-                        wVk: VK_SHIFT,
-                        dwFlags: KEYEVENTF_KEYUP,
-                        ..Default::default()
+                INPUT {
+                    r#type: INPUT_KEYBOARD,
+                    Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                        ki: KEYBDINPUT {
+                            wVk: VK_CONTROL,
+                            dwFlags: KEYEVENTF_KEYUP,
+                            ..Default::default()
+                        },
                     },
                 },
-            },
-        ];
+            ]
+        } else {
+            log::info!("send_paste_input: sending Shift+Insert");
+            vec![
+                INPUT {
+                    r#type: INPUT_KEYBOARD,
+                    Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                        ki: KEYBDINPUT {
+                            wVk: VK_SHIFT,
+                            ..Default::default()
+                        },
+                    },
+                },
+                INPUT {
+                    r#type: INPUT_KEYBOARD,
+                    Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                        ki: KEYBDINPUT {
+                            wVk: VK_INSERT,
+                            ..Default::default()
+                        },
+                    },
+                },
+                INPUT {
+                    r#type: INPUT_KEYBOARD,
+                    Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                        ki: KEYBDINPUT {
+                            wVk: VK_INSERT,
+                            dwFlags: KEYEVENTF_KEYUP,
+                            ..Default::default()
+                        },
+                    },
+                },
+                INPUT {
+                    r#type: INPUT_KEYBOARD,
+                    Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                        ki: KEYBDINPUT {
+                            wVk: VK_SHIFT,
+                            dwFlags: KEYEVENTF_KEYUP,
+                            ..Default::default()
+                        },
+                    },
+                },
+            ]
+        };
 
         let result = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
         log::info!("send_paste_input: SendInput returned {}", result);
     }
 }
-

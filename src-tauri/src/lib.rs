@@ -388,8 +388,16 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
         let s = manager.get();
         let is_mica = s.mica_effect != "clear";
         let no_corners = !s.round_corners;
-        let side = if is_mica && no_corners { 0.0 } else { constants::WINDOW_MARGIN };
-        let bottom = if is_mica && no_corners { 0.0 } else { constants::WINDOW_MARGIN };
+        let side = if is_mica && no_corners {
+            0.0
+        } else {
+            constants::WINDOW_MARGIN
+        };
+        let bottom = if is_mica && no_corners {
+            0.0
+        } else {
+            constants::WINDOW_MARGIN
+        };
         (side, bottom, s.float_above_taskbar)
     };
 
@@ -440,7 +448,10 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
                         let _ = SetWindowPos(
                             hwnd,
                             Some(hwnd_topmost),
-                            0, 0, 0, 0,
+                            0,
+                            0,
+                            0,
+                            0,
                             SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
                         );
                     }
@@ -453,11 +464,10 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
 
             for i in 1..=steps {
                 let current_y = start_y as f64 + dy * i as f64;
-                let _ =
-                    window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-                        x: work_area.position.x + side_margin_px,
-                        y: current_y as i32,
-                    }));
+                let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+                    x: work_area.position.x + side_margin_px,
+                    y: current_y as i32,
+                }));
                 std::thread::sleep(duration);
             }
 
@@ -488,8 +498,16 @@ pub fn animate_window_hide(
         let s = manager.get();
         let is_mica = s.mica_effect != "clear";
         let no_corners = !s.round_corners;
-        let side = if is_mica && no_corners { 0.0 } else { constants::WINDOW_MARGIN };
-        let bottom = if is_mica && no_corners { 0.0 } else { constants::WINDOW_MARGIN };
+        let side = if is_mica && no_corners {
+            0.0
+        } else {
+            constants::WINDOW_MARGIN
+        };
+        let bottom = if is_mica && no_corners {
+            0.0
+        } else {
+            constants::WINDOW_MARGIN
+        };
         (side, bottom, s.float_above_taskbar)
     };
 
@@ -521,11 +539,10 @@ pub fn animate_window_hide(
 
             for i in 1..=steps {
                 let current_y = start_y as f64 + dy * i as f64;
-                let _ =
-                    window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
-                        x: work_area.position.x + side_margin_px,
-                        y: current_y as i32,
-                    }));
+                let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+                    x: work_area.position.x + side_margin_px,
+                    y: current_y as i32,
+                }));
                 std::thread::sleep(duration);
             }
 
@@ -571,7 +588,12 @@ pub fn get_monitor_at_cursor(window: &tauri::WebviewWindow) -> Option<tauri::Mon
     found.or_else(|| window.current_monitor().ok().flatten())
 }
 
-pub fn apply_window_effect(window: &tauri::WebviewWindow, effect: &str, theme: &tauri::Theme, round_corners: bool) {
+pub fn apply_window_effect(
+    window: &tauri::WebviewWindow,
+    effect: &str,
+    theme: &tauri::Theme,
+    round_corners: bool,
+) {
     log::info!(
         "THEME:apply_window_effect called: effect={}, theme={:?}, round_corners={}",
         effect,
@@ -616,7 +638,11 @@ pub fn apply_window_effect(window: &tauri::WebviewWindow, effect: &str, theme: &
             DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DONOTROUND, DWMWCP_ROUND,
         };
         let hwnd = HWND(handle.0 as _);
-        let corner_pref = if use_rounded { DWMWCP_ROUND.0 } else { DWMWCP_DONOTROUND.0 };
+        let corner_pref = if use_rounded {
+            DWMWCP_ROUND.0
+        } else {
+            DWMWCP_DONOTROUND.0
+        };
         unsafe {
             let _ = DwmSetWindowAttribute(
                 hwnd,

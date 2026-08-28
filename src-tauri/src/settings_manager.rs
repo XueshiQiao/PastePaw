@@ -77,6 +77,9 @@ impl SettingsManager {
                 settings.auto_paste = b;
             }
         }
+        if let Some(v) = get_val(pool, "paste_method").await {
+            settings.paste_method = v;
+        }
         if let Some(v) = get_val(pool, "ignore_ghost_clips").await {
             if let Ok(b) = v.parse() {
                 settings.ignore_ghost_clips = b;
