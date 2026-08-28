@@ -530,9 +530,9 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
                           value={settings.mica_effect || 'clear'}
                           onChange={(val) => updateSetting('mica_effect', val)}
                           options={[
-                            { value: 'mica', label: t('settings.effectMica') },
-                            { value: 'mica_alt', label: t('settings.effectMicaAlt') },
-                            { value: 'clear', label: t('settings.effectClear') },
+                            { value: 'mica_alt', label: 'Mica Alt' },
+                            { value: 'mica', label: 'Mica' },
+                            { value: 'clear', label: 'Clear' },
                           ]}
                         />
                       </div>
