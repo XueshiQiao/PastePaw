@@ -895,29 +895,12 @@ pub fn update_window_size(window: &tauri::WebviewWindow) {
             work_area.position.y + work_area.size.height as i32
         };
 
-        let target_width = (work_area.size.width as i32 - side_margin_px * 2).max(1) as i32;
-        let target_height = window_height_px as i32;
+        let target_width = (work_area.size.width as i32 - side_margin_px * 2).max(1) as u32;
+        let target_height = window_height_px;
         let target_x = work_area.position.x + side_margin_px;
-        let target_y = reference_bottom - target_height - bottom_margin_px;
+        let target_y = reference_bottom - (target_height as i32) - bottom_margin_px;
 
-        if let Ok(handle) = window.hwnd() {
-            use windows::Win32::Foundation::HWND;
-            use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
-            let hwnd = HWND(handle.0 as _);
-            unsafe {
-                let _ = SetWindowPos(
-                    hwnd,
-                    None,
-                    target_x,
-                    target_y,
-                    target_width,
-                    target_height,
-                    SWP_NOACTIVATE | SWP_NOZORDER,
-                );
-            }
-        } else {
-            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: target_x, y: target_y }));
-            let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: target_width as u32, height: target_height as u32 }));
-        }
+        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: target_x, y: target_y }));
+        let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: target_width, height: target_height }));
     }
 }

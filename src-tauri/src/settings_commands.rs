@@ -40,6 +40,10 @@ pub async fn save_settings(app: AppHandle, settings: serde_json::Value) -> Resul
     let theme_str = new_settings.theme.clone();
     let mica_effect = new_settings.mica_effect.clone();
     let round_corners = new_settings.round_corners;
+    
+    // SAVE SETTINGS FIRST! So any functions reading state (like update_window_size) get the new values.
+    manager.save(new_settings.clone())?;
+
     log::info!(
         "save_settings: mica_effect={}, theme={}",
         mica_effect,
@@ -70,13 +74,14 @@ pub async fn save_settings(app: AppHandle, settings: serde_json::Value) -> Resul
             }
         }
     }
+    
     log::info!(
         "save_settings: auto_paste={}, language={}, theme={}",
         new_settings.auto_paste,
         new_settings.language,
         new_settings.theme
     );
-    manager.save(new_settings)?;
+    
     Ok(())
 }
 
