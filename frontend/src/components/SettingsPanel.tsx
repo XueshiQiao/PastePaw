@@ -26,7 +26,8 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { Select } from './ui/Select';
 import { useShortcutRecorder } from 'use-shortcut-recorder';
 import { clsx } from 'clsx';
-import { useAutoUpdater } from '../hooks/useAutoUpdater';
+import { useAutoUpdater, UpdateInfo } from '../hooks/useAutoUpdater';
+import ReactMarkdown from 'react-markdown';
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -366,6 +367,7 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
   };
 
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   const handleDownloadAndInstall = async () => {
     try {
@@ -385,17 +387,18 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
     try {
       setIsUpdating(true);
       const loadingToast = toast.loading(t('settings.checkingUpdates'));
-      const version = await invoke<string | null>('check_update_now');
+      const updateInfo = await invoke<UpdateInfo | null>('check_update_now');
       toast.dismiss(loadingToast);
 
-      if (version) {
-        setUpdateAvailable(version);
-        toast.info(t('settings.updateAvailable', { version }));
+      if (updateInfo) {
+        setUpdateAvailable(updateInfo);
+        toast.info(t('settings.updateAvailable', { version: updateInfo.version }));
       } else {
         toast.success(t('settings.noUpdates'));
       }
     } catch (e) {
-      toast.error(t('settings.updateError'));
+      console.error('Check update failed:', e);
+      toast.error(`Check update failed: ${e}`);
     } finally {
       setIsUpdating(false);
     }
@@ -1107,12 +1110,11 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
             <span>•</span>
             {updateAvailable ? (
               <button
-                onClick={handleDownloadAndInstall}
-                disabled={isUpdating}
-                className="flex items-center gap-1 rounded bg-blue-600 px-2 py-0.5 font-medium text-white shadow-sm transition-all hover:bg-blue-500 hover:shadow disabled:opacity-50"
+                onClick={() => setShowUpdateModal(true)}
+                className="flex items-center gap-1 rounded bg-blue-600 px-2 py-0.5 font-medium text-white shadow-sm transition-all hover:bg-blue-500 hover:shadow"
               >
-                <ArrowUpCircle size={12} className={clsx(isUpdating && 'animate-spin')} />
-                {isUpdating ? t('settings.updating', { defaultValue: 'Updating...' }) : `Update to v${updateAvailable}`}
+                <ArrowUpCircle size={12} className="animate-pulse" />
+                Update to v{updateAvailable.version}
               </button>
             ) : (
               <button onClick={handleCheckUpdate} className="underline hover:text-foreground">
@@ -1122,6 +1124,49 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
           </div>
         </div>
       </div>
+
+      {showUpdateModal && updateAvailable && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-6 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+          <div className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-3">
+              <h3 className="text-lg font-semibold text-foreground">Update Available (v{updateAvailable.version})</h3>
+              <button onClick={() => setShowUpdateModal(false)} className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="prose prose-sm dark:prose-invert prose-blue max-w-none">
+                <ReactMarkdown>{updateAvailable.body || '*No release notes provided.*'}</ReactMarkdown>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/30 px-4 py-3">
+              <button
+                onClick={() => setShowUpdateModal(false)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                disabled={isUpdating}
+              >
+                Close
+              </button>
+              <button
+                onClick={handleDownloadAndInstall}
+                disabled={isUpdating}
+                className="flex items-center gap-2 rounded-md bg-blue-600 px-6 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-500 hover:shadow disabled:opacity-50"
+              >
+                {isUpdating ? (
+                  <>
+                    <ArrowUpCircle size={16} className="animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Now'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

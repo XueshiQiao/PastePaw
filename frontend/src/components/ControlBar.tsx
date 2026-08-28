@@ -22,7 +22,7 @@ interface ControlBarProps {
   onFolderContextMenu?: (e: React.MouseEvent, folderId: string) => void;
   theme?: 'light' | 'dark';
   style?: React.CSSProperties;
-  updateAvailable?: string | null;
+  updateAvailable?: import('../hooks/useAutoUpdater').UpdateInfo | null;
 }
 
 export function ControlBar({
@@ -369,9 +369,10 @@ export function ControlBar({
         {updateAvailable && (
           <button
             onClick={onMoreClick}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={t('settings.updateAvailable', { version: updateAvailable })}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground relative group"
+            title={t('settings.updateAvailable', { version: updateAvailable.version })}
           >
+            <div className="absolute top-[6px] right-[6px] h-2 w-2 rounded-full border-2 border-background bg-blue-500 z-10 animate-pulse"></div>
             <ArrowUpCircle size={20} />
           </button>
         )}

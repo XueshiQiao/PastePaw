@@ -1,13 +1,20 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::UpdaterExt;
 use tokio::sync::RwLock;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UpdateInfo {
+  pub version: String,
+  pub body: String,
+}
+
 #[derive(Clone, Default)]
 pub struct UpdateManager {
-  available_version: Arc<RwLock<Option<String>>>,
+  available_version: Arc<RwLock<Option<UpdateInfo>>>,
   is_checking: Arc<AtomicBool>,
 }
 
@@ -19,7 +26,7 @@ impl UpdateManager {
     }
   }
 
-  pub async fn get_available_version(&self, app: &AppHandle) -> Option<String> {
+  pub async fn get_available_version(&self, app: &AppHandle) -> Option<UpdateInfo> {
     let current = self.available_version.read().await.clone();
     eprintln!("[Rust:UpdateManager] get_available_version called. Cached state: {:?}", current);
     log::info!("[UpdateManager] get_available_version called. Cached state: {:?}", current);
@@ -34,7 +41,7 @@ impl UpdateManager {
     res
   }
 
-  pub async fn check_for_updates(&self, app: &AppHandle) -> Result<Option<String>, String> {
+  pub async fn check_for_updates(&self, app: &AppHandle) -> Result<Option<UpdateInfo>, String> {
     if self
       .is_checking
       .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
@@ -51,7 +58,7 @@ impl UpdateManager {
     result
   }
 
-  async fn do_check(&self, app: &AppHandle) -> Result<Option<String>, String> {
+  async fn do_check(&self, app: &AppHandle) -> Result<Option<UpdateInfo>, String> {
     eprintln!("[updater] do_check started...");
     let updater = match app.updater() {
       Ok(u) => u,
@@ -65,17 +72,19 @@ impl UpdateManager {
     match updater.check().await {
       Ok(Some(update)) => {
         let version = update.version.clone();
+        let body = update.body.clone().unwrap_or_default();
+        let info = UpdateInfo { version: version.clone(), body };
         eprintln!("[updater] Update found: v{}", version);
         log::info!("Update available: v{}", version);
-        *self.available_version.write().await = Some(version.clone());
-        let _ = app.emit("update-available", Some(version.clone()));
-        Ok(Some(version))
+        *self.available_version.write().await = Some(info.clone());
+        let _ = app.emit("update-available", Some(info.clone()));
+        Ok(Some(info))
       }
       Ok(None) => {
         eprintln!("[updater] check() returned None (on latest version)");
         log::info!("No update available, on latest version");
         *self.available_version.write().await = None;
-        let _ = app.emit("update-available", None::<String>);
+        let _ = app.emit("update-available", None::<UpdateInfo>);
         Ok(None)
       }
       Err(e) => {
