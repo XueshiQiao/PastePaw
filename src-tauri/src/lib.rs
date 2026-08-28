@@ -864,3 +864,60 @@ pub fn update_tray_icon(tray: &TrayIcon, theme: &tauri::Theme) {
         let _ = tray.set_icon(Some(icon));
     }
 }
+pub fn update_window_size(window: &tauri::WebviewWindow) {
+    let (side_margin, bottom_margin, float_above_taskbar, card_size) = {
+        let manager = window.state::<std::sync::Arc<crate::settings_manager::SettingsManager>>();
+        let s = manager.get();
+        let is_mica = s.mica_effect != "clear";
+        let no_corners = !s.round_corners;
+        let side = if is_mica && no_corners { 0.0 } else { constants::WINDOW_MARGIN };
+        let bottom = if is_mica && no_corners { 0.0 } else { constants::WINDOW_MARGIN };
+        (side, bottom, s.float_above_taskbar, s.card_size.clone())
+    };
+
+    if let Some(monitor) = window.current_monitor().ok().flatten().or_else(|| crate::get_monitor_at_cursor(&window)) {
+        let scale_factor = monitor.scale_factor();
+        let monitor_pos = monitor.position();
+        let monitor_size = monitor.size();
+        let work_area = monitor.work_area();
+
+        let base_height = match card_size.as_str() {
+            "medium" => 236.0,
+            _ => constants::WINDOW_HEIGHT,
+        };
+        let window_height_px = (base_height * scale_factor).round() as u32;
+        let side_margin_px = (side_margin * scale_factor) as i32;
+        let bottom_margin_px = (bottom_margin * scale_factor) as i32;
+
+        let reference_bottom = if float_above_taskbar {
+            monitor_pos.y + monitor_size.height as i32
+        } else {
+            work_area.position.y + work_area.size.height as i32
+        };
+
+        let target_width = (work_area.size.width as i32 - side_margin_px * 2).max(1) as i32;
+        let target_height = window_height_px as i32;
+        let target_x = work_area.position.x + side_margin_px;
+        let target_y = reference_bottom - target_height - bottom_margin_px;
+
+        if let Ok(handle) = window.hwnd() {
+            use windows::Win32::Foundation::HWND;
+            use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
+            let hwnd = HWND(handle.0 as _);
+            unsafe {
+                let _ = SetWindowPos(
+                    hwnd,
+                    None,
+                    target_x,
+                    target_y,
+                    target_width,
+                    target_height,
+                    SWP_NOACTIVATE | SWP_NOZORDER,
+                );
+            }
+        } else {
+            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: target_x, y: target_y }));
+            let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: target_width as u32, height: target_height as u32 }));
+        }
+    }
+}

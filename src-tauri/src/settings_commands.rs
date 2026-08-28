@@ -49,6 +49,7 @@ pub async fn save_settings(app: AppHandle, settings: serde_json::Value) -> Resul
         Some(win) => {
             let current_theme = crate::get_effective_theme(&win, &theme_str);
             crate::apply_window_effect(&win, &mica_effect, &current_theme, round_corners);
+            crate::update_window_size(&win);
         }
         None => {
             log::warn!("save_settings: main window not found, skipping window effect");
