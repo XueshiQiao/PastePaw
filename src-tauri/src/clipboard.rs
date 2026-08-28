@@ -34,8 +34,8 @@ use windows::Win32::System::ProcessStatus::{GetModuleBaseNameW, GetModuleFileNam
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_CONTROL,
-    VK_INSERT, VK_SHIFT,
+    MapVirtualKeyW, SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
+    KEYEVENTF_KEYUP, MAPVK_VK_TO_VSC, VIRTUAL_KEY, VK_CONTROL, VK_INSERT, VK_SHIFT,
 };
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Shell::{
@@ -836,12 +836,15 @@ pub fn send_paste_input(method: &str) {
     unsafe {
         let inputs = if method == "ctrl_v" {
             log::info!("send_paste_input: sending Ctrl+V");
+            let ctrl_scan = MapVirtualKeyW(VK_CONTROL.0 as u32, MAPVK_VK_TO_VSC) as u16;
+            let v_scan = MapVirtualKeyW(0x56, MAPVK_VK_TO_VSC) as u16;
             vec![
                 INPUT {
                     r#type: INPUT_KEYBOARD,
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
                             wVk: VK_CONTROL,
+                            wScan: ctrl_scan,
                             ..Default::default()
                         },
                     },
@@ -851,6 +854,7 @@ pub fn send_paste_input(method: &str) {
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
                             wVk: VIRTUAL_KEY(0x56),
+                            wScan: v_scan,
                             ..Default::default()
                         },
                     },
@@ -860,6 +864,7 @@ pub fn send_paste_input(method: &str) {
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
                             wVk: VIRTUAL_KEY(0x56),
+                            wScan: v_scan,
                             dwFlags: KEYEVENTF_KEYUP,
                             ..Default::default()
                         },
@@ -870,6 +875,7 @@ pub fn send_paste_input(method: &str) {
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
                             wVk: VK_CONTROL,
+                            wScan: ctrl_scan,
                             dwFlags: KEYEVENTF_KEYUP,
                             ..Default::default()
                         },
@@ -877,13 +883,16 @@ pub fn send_paste_input(method: &str) {
                 },
             ]
         } else {
-            log::info!("send_paste_input: sending Shift+Insert");
+            log::info!("send_paste_input: sending Shift+Insert (with KEYEVENTF_EXTENDEDKEY)");
+            let shift_scan = MapVirtualKeyW(VK_SHIFT.0 as u32, MAPVK_VK_TO_VSC) as u16;
+            let insert_scan = MapVirtualKeyW(VK_INSERT.0 as u32, MAPVK_VK_TO_VSC) as u16;
             vec![
                 INPUT {
                     r#type: INPUT_KEYBOARD,
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
                             wVk: VK_SHIFT,
+                            wScan: shift_scan,
                             ..Default::default()
                         },
                     },
@@ -893,6 +902,8 @@ pub fn send_paste_input(method: &str) {
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
                             wVk: VK_INSERT,
+                            wScan: insert_scan,
+                            dwFlags: KEYEVENTF_EXTENDEDKEY,
                             ..Default::default()
                         },
                     },
@@ -902,7 +913,8 @@ pub fn send_paste_input(method: &str) {
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
                             wVk: VK_INSERT,
-                            dwFlags: KEYEVENTF_KEYUP,
+                            wScan: insert_scan,
+                            dwFlags: KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP,
                             ..Default::default()
                         },
                     },
@@ -912,6 +924,7 @@ pub fn send_paste_input(method: &str) {
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
                             wVk: VK_SHIFT,
+                            wScan: shift_scan,
                             dwFlags: KEYEVENTF_KEYUP,
                             ..Default::default()
                         },
