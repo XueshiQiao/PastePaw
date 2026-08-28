@@ -148,12 +148,12 @@ export const ClipCard = memo(
             {
               '--app-hue': `${appHue}`,
               borderColor: isSelected ? `hsl(${appHue} 82% 60%)` : undefined,
-              borderWidth: isSelected ? '2px' : undefined,
+              boxShadow: isSelected ? `inset 0 0 0 1px hsl(${appHue} 82% 60%)` : undefined,
             } as React.CSSProperties
           }
           className={clsx(
-            'relative flex h-full w-full cursor-pointer select-none flex-col overflow-hidden rounded-2xl border border-border bg-card/80 shadow-lg transition-all',
-            isSelected ? 'z-10 scale-[1.02] transform' : 'hover:-translate-y-1',
+            'relative flex h-full w-full cursor-pointer select-none flex-col overflow-hidden rounded-2xl border border-border bg-card/80 transition-all',
+            isSelected ? 'z-10 scale-[1.02] transform shadow-xl' : 'hover:-translate-y-1 shadow-lg',
             'group'
           )}
         >
