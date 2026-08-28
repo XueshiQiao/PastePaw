@@ -372,6 +372,14 @@ pub fn get_effective_theme(window: &tauri::WebviewWindow, theme_setting: &str) -
 }
 
 pub fn position_window_at_bottom(window: &tauri::WebviewWindow) {
+    let (mica_effect, theme_setting, round_corners) = {
+        let manager = window.state::<Arc<crate::settings_manager::SettingsManager>>();
+        let s = manager.get();
+        (s.mica_effect, s.theme, s.round_corners)
+    };
+    let effective_theme = get_effective_theme(window, &theme_setting);
+    apply_window_effect(window, &mica_effect, &effective_theme, round_corners);
+
     animate_window_show(window);
 }
 
