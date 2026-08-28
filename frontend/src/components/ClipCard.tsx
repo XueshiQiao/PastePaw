@@ -3,13 +3,14 @@ import { clsx } from 'clsx';
 import { useMemo, memo, useState, forwardRef } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
-import { LAYOUT, COLUMN_WIDTH, PREVIEW_CHAR_LIMIT } from '../constants';
+import { PREVIEW_CHAR_LIMIT } from '../constants';
 import { Copy, Check } from 'lucide-react';
 import { useMotionValue, useMotionTemplate, motion } from 'framer-motion';
 
 interface ClipCardProps {
   clip: ClipboardItem;
   isSelected: boolean;
+  layout: { columnWidth: number; cardGap: number; cardVerticalPadding: number };
   onSelect: () => void;
   onPaste: () => void;
   onCopy: () => void;
@@ -19,7 +20,7 @@ interface ClipCardProps {
 
 export const ClipCard = memo(
   forwardRef<HTMLDivElement, ClipCardProps>(function ClipCard(
-    { clip, isSelected, onSelect, onPaste, onCopy, onDragStart, onContextMenu }: ClipCardProps,
+    { clip, isSelected, layout, onSelect, onPaste, onCopy, onDragStart, onContextMenu }: ClipCardProps,
     ref
   ) {
     const { t } = useTranslation();
@@ -129,8 +130,8 @@ export const ClipCard = memo(
         data-el="clip-card"
         data-clip-id={clip.id}
         style={{
-          width: COLUMN_WIDTH - LAYOUT.CARD_GAP,
-          height: `calc(100% - ${LAYOUT.CARD_VERTICAL_PADDING * 2}px)`,
+          width: layout.columnWidth - layout.cardGap,
+          height: `calc(100% - ${layout.cardVerticalPadding * 2}px)`,
         }}
         className="flex-shrink-0"
       >

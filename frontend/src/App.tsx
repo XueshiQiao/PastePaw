@@ -824,6 +824,7 @@ function App() {
           <main data-el="clip-list-area" className="no-scrollbar relative flex-1 overflow-hidden">
             <ClipList
               clips={clips}
+              cardSize={settings?.card_size as any}
               isLoading={isLoading}
               hasMore={hasMore}
               resetToken={clipListResetToken}

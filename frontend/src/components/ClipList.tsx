@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Grid, GridProps, useGridCallbackRef } from 'react-window';
 import { ClipboardItem } from '../types';
 import { ClipCard } from './ClipCard';
-import { COLUMN_WIDTH } from '../constants';
+
 
 interface ClipListProps {
   clips: ClipboardItem[];
@@ -11,6 +11,7 @@ interface ClipListProps {
   hasMore: boolean;
   resetToken: number;
   selectedClipId: string | null;
+  cardSize?: 'large' | 'medium' | 'small';
   onSelectClip: (clipId: string) => void;
   onPaste: (clipId: string) => void;
   onCopy: (clipId: string) => void;
@@ -26,6 +27,7 @@ export function ClipList({
   hasMore,
   resetToken,
   selectedClipId,
+  cardSize = 'large',
   onSelectClip,
   onPaste,
   onCopy,
@@ -37,6 +39,19 @@ export function ClipList({
   const [gridApi, setGridApi] = useGridCallbackRef();
   const wheelTargetRef = useRef(0);
   const wheelRafRef = useRef<number | null>(null);
+
+  const layout = useMemo(() => {
+    let cardWidth = 210;
+    if (cardSize === 'medium') cardWidth = 178;
+    else if (cardSize === 'small') cardWidth = 148;
+    return {
+      cardWidth,
+      columnWidth: cardWidth + 16,
+      cardGap: 16,
+      cardVerticalPadding: 8
+    };
+  }, [cardSize]);
+
   const selectedClipIndex = useMemo(
     () => (selectedClipId ? clips.findIndex((clip) => clip.id === selectedClipId) : -1),
     [clips, selectedClipId]
@@ -80,16 +95,27 @@ export function ClipList({
 
     e.preventDefault();
 
+    const isTouchpad = Math.abs(rawDelta) < 30;
+
     let deltaPx = rawDelta;
     if (e.deltaMode === 1) {
       deltaPx *= 16;
     } else if (e.deltaMode === 2) {
       deltaPx *= element.clientWidth;
+    } else {
+      deltaPx = Math.sign(e.deltaY) * layout.columnWidth;
+    }
+
+    if (deltaPx === 0) return;
+
+    if (isTouchpad) {
+      element.scrollBy({ left: deltaPx, behavior: 'auto' });
+      return;
     }
 
     // Smaller per-notch travel with a single RAF-driven animation target.
     const scrollStep = deltaPx * 0.52;
-    const estimatedMax = Math.max(0, clips.length * COLUMN_WIDTH - element.clientWidth);
+    const estimatedMax = Math.max(0, clips.length * layout.columnWidth - element.clientWidth);
     const measuredMax = Math.max(0, element.scrollWidth - element.clientWidth);
     const maxScrollLeft = Math.max(estimatedMax, measuredMax);
 
@@ -148,6 +174,7 @@ export function ClipList({
         <ClipCard
           clip={clip}
           isSelected={selectedClipId === clip.id}
+          layout={layout}
           onSelect={() => onSelectClip(clip.id)}
           onPaste={() => onPaste(clip.id)}
           onCopy={() => onCopy(clip.id)}
@@ -188,7 +215,7 @@ export function ClipList({
       rowCount={1}
       rowHeight="100%"
       columnCount={clips.length}
-      columnWidth={COLUMN_WIDTH}
+      columnWidth={layout.columnWidth}
       overscanCount={4}
       cellComponent={({ columnIndex, style }) => <Cell columnIndex={columnIndex} style={style} />}
       cellProps={{}}

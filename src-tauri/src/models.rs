@@ -19,6 +19,7 @@ pub struct AppSettings {
     pub startup_with_windows: bool,
     pub round_corners: bool,
     pub float_above_taskbar: bool,
+    pub card_size: String,
 
     // AI
     pub ai_provider: String,
@@ -53,6 +54,7 @@ impl Default for AppSettings {
             startup_with_windows: false,
             round_corners: false,
             float_above_taskbar: true,
+            card_size: "large".to_string(),
 
             ai_provider: "openai".to_string(),
             ai_api_key: "".to_string(),

@@ -521,19 +521,36 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <label className="block">
-                        <span className="text-sm font-medium">{t('settings.windowEffect')}</span>
-                      </label>
-                      <Select
-                        value={settings.mica_effect || 'clear'}
-                        onChange={(val) => updateSetting('mica_effect', val)}
-                        options={[
-                          { value: 'mica_alt', label: 'Mica Alt' },
-                          { value: 'mica', label: 'Mica' },
-                          { value: 'clear', label: 'Clear' },
-                        ]}
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <label className="block">
+                          <span className="text-sm font-medium">{t('settings.windowEffect')}</span>
+                        </label>
+                        <Select
+                          value={settings.mica_effect || 'clear'}
+                          onChange={(val) => updateSetting('mica_effect', val)}
+                          options={[
+                            { value: 'mica', label: t('settings.effectMica') },
+                            { value: 'mica_alt', label: t('settings.effectMicaAlt') },
+                            { value: 'clear', label: t('settings.effectClear') },
+                          ]}
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <label className="block">
+                          <span className="text-sm font-medium">{i18n.language.startsWith('zh') ? '界面大小' : 'Display Size'}</span>
+                        </label>
+                        <Select
+                          value={settings.card_size || 'large'}
+                          onChange={(val) => updateSetting('card_size', val)}
+                          options={[
+                            { value: 'large', label: i18n.language.startsWith('zh') ? '默认 (大)' : 'Default (Large)' },
+                            { value: 'medium', label: i18n.language.startsWith('zh') ? '中等' : 'Medium' },
+                            { value: 'small', label: i18n.language.startsWith('zh') ? '紧凑 (小)' : 'Compact (Small)' },
+                          ]}
+                        />
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between rounded-lg border border-border bg-accent/20 p-3">

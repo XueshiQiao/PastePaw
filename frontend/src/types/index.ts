@@ -30,6 +30,7 @@ export interface Settings {
   mica_effect?: string;
   round_corners?: boolean;
   float_above_taskbar?: boolean;
+  card_size?: 'large' | 'medium' | 'small';
   auto_paste: boolean;
   paste_method?: 'shift_insert' | 'ctrl_v';
   ignore_ghost_clips: boolean;

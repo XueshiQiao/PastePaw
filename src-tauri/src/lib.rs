@@ -405,7 +405,7 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
 
     let window = window.clone();
 
-    let (side_margin, bottom_margin, float_above_taskbar) = {
+    let (side_margin, bottom_margin, float_above_taskbar, card_size) = {
         let manager = window.state::<Arc<crate::settings_manager::SettingsManager>>();
         let s = manager.get();
         let is_mica = s.mica_effect != "clear";
@@ -420,7 +420,7 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
         } else {
             constants::WINDOW_MARGIN
         };
-        (side, bottom, s.float_above_taskbar)
+        (side, bottom, s.float_above_taskbar, s.card_size.clone())
     };
 
     std::thread::spawn(move || {
@@ -430,7 +430,12 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
             let monitor_size = monitor.size();
             let work_area = monitor.work_area();
 
-            let window_height_px = (constants::WINDOW_HEIGHT * scale_factor) as u32;
+            let base_height = match card_size.as_str() {
+                "medium" => 236.0,
+                "small" => 206.0,
+                _ => constants::WINDOW_HEIGHT, // 266.0
+            };
+            let window_height_px = (base_height * scale_factor).round() as u32;
             let side_margin_px = (side_margin * scale_factor) as i32;
             let bottom_margin_px = (bottom_margin * scale_factor) as i32;
 
@@ -595,7 +600,7 @@ pub fn animate_window_hide(
         return;
     }
 
-    let (side_margin, bottom_margin, float_above_taskbar) = {
+    let (side_margin, bottom_margin, float_above_taskbar, card_size) = {
         let manager = window.state::<Arc<crate::settings_manager::SettingsManager>>();
         let s = manager.get();
         let is_mica = s.mica_effect != "clear";
@@ -610,7 +615,7 @@ pub fn animate_window_hide(
         } else {
             constants::WINDOW_MARGIN
         };
-        (side, bottom, s.float_above_taskbar)
+        (side, bottom, s.float_above_taskbar, s.card_size.clone())
     };
 
     let window = window.clone();
@@ -628,7 +633,12 @@ pub fn animate_window_hide(
             let monitor_size = monitor.size();
             let work_area = monitor.work_area();
 
-            let window_height_px = (constants::WINDOW_HEIGHT * scale_factor) as u32;
+            let base_height = match card_size.as_str() {
+                "medium" => 236.0,
+                "small" => 206.0,
+                _ => constants::WINDOW_HEIGHT, // 266.0
+            };
+            let window_height_px = (base_height * scale_factor).round() as u32;
             let side_margin_px = (side_margin * scale_factor) as i32;
             let bottom_margin_px = (bottom_margin * scale_factor) as i32;
 
