@@ -138,9 +138,10 @@ pnpm install && pnpm dev
 
 ## Version Bumping
 
-Update version in **both**:
+Update version in **all three** locations:
 1. `src-tauri/Cargo.toml` → `version = "x.y.z"`
 2. `src-tauri/tauri.conf.json` → `"version": "x.y.z"`
+3. `package.json` → `"version": "x.y.z"`
 
 Before writing the CHANGELOG entry, **always** review all commits since the previous tag:
 ```bash
@@ -148,7 +149,11 @@ git log --oneline v{prev_version}..HEAD
 ```
 Summarize from the full list — never from just the most recent commit. The last commit often has a `fix:` prefix that misrepresents the primary feature.
 
-Then add a `## vx.y.z` section to `CHANGELOG.md`, commit, tag `vx.y.z`, and push the tag to trigger the release workflow.
+**Release Checklist (Must Include):**
+1. **Release Notes (Bilingual):** Always write the update notes in both English and Chinese in `CHANGELOG.md` under the new `## vx.y.z` section.
+2. **Rules & Guidelines Source:** Ensure the release conforms strictly to the current rules defined in `AGENTS.md` (e.g., verifying CI workflows, referencing the source of the release guidelines).
+
+After updating the changelog and versions, commit the changes, tag `vx.y.z`, and push (`git push origin refs/heads/main:refs/heads/main` and `git push origin --tags`) to trigger the release workflow.
 
 ## Working Conventions
 
