@@ -689,7 +689,7 @@ pub async fn create_folder(
         .map_err(|e| e.to_string())?
         .last_insert_rowid();
 
-    let _ = window.emit("clipboard-change", ());
+    let _ = window.app_handle().emit("clipboard-change", ());
 
     Ok(FolderItem {
         id: id.to_string(),
@@ -725,7 +725,7 @@ pub async fn delete_folder(
         .await
         .map_err(|e| e.to_string())?;
 
-    let _ = window.emit("clipboard-change", ());
+    let _ = window.app_handle().emit("clipboard-change", ());
     Ok(())
 }
 
@@ -761,7 +761,7 @@ pub async fn rename_folder(
         .map_err(|e| e.to_string())?;
 
     // Emit event so main window knows to refresh
-    let _ = window.emit("clipboard-change", ());
+    let _ = window.app_handle().emit("clipboard-change", ());
     Ok(())
 }
 
@@ -987,7 +987,7 @@ pub async fn clear_all_clips(
             .map_err(|e| e.to_string())?;
     }
 
-    let _ = window.emit("clipboard-change", ());
+    let _ = window.app_handle().emit("clipboard-change", ());
     Ok(())
 }
 

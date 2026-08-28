@@ -278,15 +278,29 @@ function App() {
     [clips.length, resetToFirstClip]
   );
 
-  const loadFolders = useCallback(async () => {
+  const loadFolders = useCallback(async (): Promise<boolean> => {
     try {
       const data = await invoke<FolderItem[]>('get_folders');
-
       setFolders(data);
+
+      const currentSelected = selectedFolderRef.current;
+      if (
+        currentSelected !== null &&
+        !data.some((f) => String(f.id) === String(currentSelected))
+      ) {
+        selectedFolderRef.current = null;
+        setSelectedFolder(null);
+        setSelectedClipId(null);
+        setClipListResetToken((prev) => prev + 1);
+        loadClips(null, false, searchQuery);
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error('Failed to load folders:', error);
+      return false;
     }
-  }, []);
+  }, [loadClips, searchQuery]);
 
   const refreshCurrentFolder = useCallback(() => {
     loadClips(selectedFolderRef.current, false, searchQuery);
@@ -435,9 +449,11 @@ function App() {
   }, [refreshTotalCount]);
 
   useEffect(() => {
-    const unlistenClipboard = listen('clipboard-change', () => {
-      refreshCurrentFolder();
-      loadFolders(); // Refresh folders to get updated counts
+    const unlistenClipboard = listen('clipboard-change', async () => {
+      const folderWasReset = await loadFolders();
+      if (!folderWasReset) {
+        refreshCurrentFolder();
+      }
       refreshTotalCount(); // Refresh total count
     });
 
@@ -678,7 +694,11 @@ function App() {
     try {
       await invoke('delete_folder', { id: folderId });
       if (selectedFolder === folderId) {
+        selectedFolderRef.current = null;
         setSelectedFolder(null);
+        setSelectedClipId(null);
+        setClipListResetToken((prev) => prev + 1);
+        loadClips(null, false, searchQuery);
       }
       await loadFolders();
       refreshTotalCount();

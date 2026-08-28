@@ -372,14 +372,6 @@ pub fn get_effective_theme(window: &tauri::WebviewWindow, theme_setting: &str) -
 }
 
 pub fn position_window_at_bottom(window: &tauri::WebviewWindow) {
-    let (mica_effect, theme_setting, round_corners) = {
-        let manager = window.state::<Arc<crate::settings_manager::SettingsManager>>();
-        let s = manager.get();
-        (s.mica_effect, s.theme, s.round_corners)
-    };
-    let effective_theme = get_effective_theme(window, &theme_setting);
-    apply_window_effect(window, &mica_effect, &effective_theme, round_corners);
-
     animate_window_show(window);
 }
 
@@ -450,10 +442,17 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
                 let z_order = if float_above_taskbar {
                     Some(HWND(-1 as _)) // HWND_TOPMOST
                 } else {
-                    None
+                    use windows::Win32::UI::WindowsAndMessaging::FindWindowW;
+                    let taskbar_hwnd =
+                        unsafe { FindWindowW(windows::core::w!("Shell_TrayWnd"), None).ok() };
+                    if let Some(hwnd) = taskbar_hwnd {
+                        Some(hwnd)
+                    } else {
+                        Some(HWND(1 as _)) // HWND_BOTTOM
+                    }
                 };
                 let flags = SWP_NOACTIVATE
-                    | if float_above_taskbar {
+                    | if z_order.is_some() {
                         windows::Win32::UI::WindowsAndMessaging::SET_WINDOW_POS_FLAGS(0)
                     } else {
                         SWP_NOZORDER
@@ -542,19 +541,18 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
             // Ensure final position is exact
             if let Ok(handle) = window.hwnd() {
                 use windows::Win32::Foundation::HWND;
-                use windows::Win32::UI::WindowsAndMessaging::{
-                    SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER,
-                };
+                use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE};
                 let hwnd = HWND(handle.0 as _);
+                let hwnd_topmost = HWND(-1 as _); // HWND_TOPMOST
                 unsafe {
                     let _ = SetWindowPos(
                         hwnd,
-                        None,
+                        Some(hwnd_topmost),
                         target_x,
                         target_y,
                         target_width,
                         target_height,
-                        SWP_NOZORDER | SWP_NOACTIVATE,
+                        SWP_NOACTIVATE,
                     );
                 }
             } else {
@@ -631,24 +629,66 @@ pub fn animate_window_hide(
             let duration = std::time::Duration::from_millis(10);
             let dy = (target_y - start_y) as f64 / steps as f64;
 
+            if let Ok(handle) = window.hwnd() {
+                use windows::Win32::Foundation::HWND;
+                use windows::Win32::UI::WindowsAndMessaging::{
+                    SetWindowPos, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
+                };
+                let hwnd = HWND(handle.0 as _);
+                let hwnd_topmost = HWND(-1 as _); // HWND_TOPMOST
+                unsafe {
+                    let _ = SetWindowPos(
+                        hwnd,
+                        Some(hwnd_topmost),
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                    );
+                }
+            }
+
+            let mut dropped_z = false;
+            let taskbar_hwnd = {
+                use windows::Win32::UI::WindowsAndMessaging::FindWindowW;
+                unsafe { FindWindowW(windows::core::w!("Shell_TrayWnd"), None).ok() }
+            };
+
             for i in 1..=steps {
                 let current_y = (start_y as f64 + dy * i as f64) as i32;
+
+                let mut z_order = None;
+                if !float_above_taskbar && !dropped_z {
+                    // Check if window's bottom has reached taskbar top
+                    let window_bottom = current_y + window_height_px as i32;
+                    let taskbar_top = work_area.position.y + work_area.size.height as i32;
+                    if window_bottom > taskbar_top {
+                        if let Some(hwnd) = taskbar_hwnd {
+                            z_order = Some(hwnd);
+                        } else {
+                            use windows::Win32::Foundation::HWND;
+                            z_order = Some(HWND(1 as _)); // HWND_BOTTOM
+                        }
+                        dropped_z = true;
+                    }
+                }
+
                 if let Ok(handle) = window.hwnd() {
                     use windows::Win32::Foundation::HWND;
                     use windows::Win32::UI::WindowsAndMessaging::{
                         SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
                     };
                     let hwnd = HWND(handle.0 as _);
+                    let flags = SWP_NOSIZE
+                        | SWP_NOACTIVATE
+                        | if z_order.is_some() {
+                            windows::Win32::UI::WindowsAndMessaging::SET_WINDOW_POS_FLAGS(0)
+                        } else {
+                            SWP_NOZORDER
+                        };
                     unsafe {
-                        let _ = SetWindowPos(
-                            hwnd,
-                            None,
-                            target_x,
-                            current_y,
-                            0,
-                            0,
-                            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
-                        );
+                        let _ = SetWindowPos(hwnd, z_order, target_x, current_y, 0, 0, flags);
                     }
                 } else {
                     let _ =
