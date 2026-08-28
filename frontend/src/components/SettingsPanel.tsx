@@ -134,7 +134,11 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
           if (updates.hotkey) {
             await invoke('register_global_shortcut', { hotkey: updates.hotkey });
           }
-          if ('round_corners' in updates || 'mica_effect' in updates || 'float_above_taskbar' in updates) {
+          if (
+            'round_corners' in updates ||
+            'mica_effect' in updates ||
+            'float_above_taskbar' in updates
+          ) {
             await invoke('refresh_window');
           }
         } catch (error) {
@@ -225,7 +229,6 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
     invoke<string[]>('get_ignored_apps').then(setIgnoredApps).catch(console.error);
     getVersion().then(setAppVersion).catch(console.error);
     loadFolders();
-
   }, []);
 
   const handleAddIgnoredApp = async () => {
@@ -293,14 +296,21 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
     }
   };
 
-  const handleDeleteFolder = async (id: string) => {
-    try {
-      await invoke('delete_folder', { id });
-      await loadFolders();
-      toast.success('Folder deleted');
-    } catch (e) {
-      toast.error(`Failed to delete folder: ${e}`);
-    }
+  const handleDeleteFolder = (id: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: t('folders.deleteFolderTitle'),
+      message: t('folders.deleteFolderConfirm'),
+      action: async () => {
+        try {
+          await invoke('delete_folder', { id });
+          await loadFolders();
+          toast.success(t('folders.folderDeleted'));
+        } catch (e) {
+          toast.error(`Failed to delete folder: ${e}`);
+        }
+      },
+    });
   };
 
   const startRenameFolder = (folder: FolderItem) => {
@@ -504,43 +514,60 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
                     </div>
 
                     <div className="space-y-3">
-                        <label className="block">
-                          <span className="text-sm font-medium">{t('settings.windowEffect')}</span>
-                        </label>
-                        <Select
-                          value={settings.mica_effect || 'clear'}
-                          onChange={(val) => updateSetting('mica_effect', val)}
-                          options={[
-                            { value: 'mica_alt', label: 'Mica Alt' },
-                            { value: 'mica', label: 'Mica' },
-                            { value: 'clear', label: 'Clear' },
-                          ]}
-                        />
-                      </div>
+                      <label className="block">
+                        <span className="text-sm font-medium">{t('settings.windowEffect')}</span>
+                      </label>
+                      <Select
+                        value={settings.mica_effect || 'clear'}
+                        onChange={(val) => updateSetting('mica_effect', val)}
+                        options={[
+                          { value: 'mica_alt', label: 'Mica Alt' },
+                          { value: 'mica', label: 'Mica' },
+                          { value: 'clear', label: 'Clear' },
+                        ]}
+                      />
+                    </div>
 
                     <div className="flex items-center justify-between rounded-lg border border-border bg-accent/20 p-3">
                       <div>
-                        <span className="text-sm font-medium">{t('settings.floatAboveTaskbar')}</span>
-                        <p className="text-xs text-muted-foreground">{t('settings.floatAboveTaskbarDesc')}</p>
+                        <span className="text-sm font-medium">
+                          {t('settings.floatAboveTaskbar')}
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          {t('settings.floatAboveTaskbarDesc')}
+                        </p>
                       </div>
                       <button
-                        onClick={() => updateSetting('float_above_taskbar', !(settings.float_above_taskbar ?? true))}
+                        onClick={() =>
+                          updateSetting(
+                            'float_above_taskbar',
+                            !(settings.float_above_taskbar ?? true)
+                          )
+                        }
                         className={`h-6 w-11 rounded-full transition-colors ${(settings.float_above_taskbar ?? true) ? 'bg-primary' : 'bg-accent'}`}
                       >
-                        <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${(settings.float_above_taskbar ?? true) ? 'translate-x-6' : 'translate-x-1'}`} />
+                        <span
+                          className={`block h-4 w-4 rounded-full bg-white transition-transform ${(settings.float_above_taskbar ?? true) ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
                       </button>
                     </div>
 
                     <div className="flex items-center justify-between rounded-lg border border-border bg-accent/20 p-3">
                       <div>
                         <span className="text-sm font-medium">{t('settings.roundCorners')}</span>
-                        <p className="text-xs text-muted-foreground">{t('settings.roundCornersDesc')}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t('settings.roundCornersDesc')}
+                        </p>
                       </div>
                       <button
-                        onClick={() => updateSetting('round_corners', !(settings.round_corners ?? false))}
+                        onClick={() =>
+                          updateSetting('round_corners', !(settings.round_corners ?? false))
+                        }
                         className={`h-6 w-11 rounded-full transition-colors ${(settings.round_corners ?? false) ? 'bg-primary' : 'bg-accent'}`}
                       >
-                        <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${(settings.round_corners ?? false) ? 'translate-x-6' : 'translate-x-1'}`} />
+                        <span
+                          className={`block h-4 w-4 rounded-full bg-white transition-transform ${(settings.round_corners ?? false) ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
                       </button>
                     </div>
 
@@ -581,6 +608,25 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
                         />
                       </button>
                     </div>
+
+                    {settings.auto_paste && (
+                      <div className="space-y-3 rounded-lg border border-border bg-accent/20 p-3">
+                        <label className="block">
+                          <span className="text-sm font-medium">{t('settings.pasteMethod')}</span>
+                          <p className="text-xs text-muted-foreground">
+                            {t('settings.pasteMethodDesc')}
+                          </p>
+                        </label>
+                        <Select
+                          value={settings.paste_method || 'shift_insert'}
+                          onChange={(val) => updateSetting('paste_method', val)}
+                          options={[
+                            { value: 'shift_insert', label: t('settings.pasteMethodShiftInsert') },
+                            { value: 'ctrl_v', label: t('settings.pasteMethodCtrlV') },
+                          ]}
+                        />
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between rounded-lg border border-border bg-accent/20 p-3">
                       <div>
@@ -1024,7 +1070,14 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
             PastePaw {appVersion || '...'}
           </button>
           <div className="flex gap-2 text-xs text-muted-foreground">
-            <a href="https://pastepaw.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">© 2026 PastePaw</a>
+            <a
+              href="https://pastepaw.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              © 2026 PastePaw
+            </a>
             <span>•</span>
             <button onClick={handleCheckUpdate} className="underline hover:text-foreground">
               {t('settings.checkForUpdates')}

@@ -239,7 +239,10 @@ export function ControlBar({
       >
         {/** Search Render Code Omitted here for brevity, referencing original structure **/}
         {showSearch ? (
-          <div data-el="search-input-wrapper" className="animate-in fade-in slide-in-from-left-2 flex w-full items-center gap-2 rounded-full border border-border bg-input px-3 py-1.5 duration-300">
+          <div
+            data-el="search-input-wrapper"
+            className="animate-in fade-in slide-in-from-left-2 flex w-full items-center gap-2 rounded-full border border-border bg-input px-3 py-1.5 duration-300"
+          >
             <Search size={18} className="text-blue-400" />
             <input
               data-el="search-input"

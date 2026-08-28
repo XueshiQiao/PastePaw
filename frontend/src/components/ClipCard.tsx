@@ -206,12 +206,18 @@ export const ClipCard = memo(
             </button>
           </div>
 
-          <div data-el="clip-card-content" className="relative z-10 flex-1 overflow-hidden bg-card/90 p-2">
+          <div
+            data-el="clip-card-content"
+            className="relative z-10 flex-1 overflow-hidden bg-card/90 p-2"
+          >
             {renderedContent}
             <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card/100 to-card/30" />
           </div>
 
-          <div data-el="clip-card-footer" className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-card via-card/100 to-transparent/0 px-3 py-1.5">
+          <div
+            data-el="clip-card-footer"
+            className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-card via-card/100 to-transparent/0 px-3 py-1.5"
+          >
             <span className="text-[11px] font-medium text-muted-foreground/50">
               {clip.clip_type === 'image'
                 ? t('clipList.imageSize', { size: imageSizeKb })

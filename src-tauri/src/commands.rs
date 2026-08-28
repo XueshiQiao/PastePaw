@@ -576,7 +576,12 @@ pub async fn paste_clip(
                 let manager = app.state::<Arc<SettingsManager>>();
                 let settings = manager.get();
                 let auto_paste = settings.auto_paste;
-                log::info!("paste_clip: auto_paste={}", auto_paste);
+                let paste_method = settings.paste_method.clone();
+                log::info!(
+                    "paste_clip: auto_paste={}, paste_method={}",
+                    auto_paste,
+                    paste_method
+                );
 
                 if auto_paste {
                     // Auto-Paste Logic
@@ -587,7 +592,7 @@ pub async fn paste_clip(
                             // 2. Callback executed AFTER window is hidden
                             // Small buffer to ensure OS focus switch is complete
                             std::thread::sleep(std::time::Duration::from_millis(200));
-                            crate::clipboard::send_paste_input();
+                            crate::clipboard::send_paste_input(&paste_method);
                         })),
                     );
                 } else {
@@ -705,6 +710,15 @@ pub async fn delete_folder(
     let pool = &db.pool;
 
     let folder_id: i64 = id.parse().map_err(|_| "Invalid folder ID")?;
+
+    sqlx::query(r#"DELETE FROM clips WHERE folder_id = ?"#)
+        .bind(folder_id)
+        .execute(pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    cleanup_orphan_clip_image_files(pool).await?;
+
     sqlx::query(r#"DELETE FROM folders WHERE id = ?"#)
         .bind(folder_id)
         .execute(pool)
@@ -1008,7 +1022,9 @@ pub async fn register_global_shortcut(
         .global_shortcut()
         .on_shortcut(shortcut, move |_app, _shortcut, event| {
             if event.state() == ShortcutState::Pressed {
-                if win_clone.is_visible().unwrap_or(false) && win_clone.is_focused().unwrap_or(false) {
+                if win_clone.is_visible().unwrap_or(false)
+                    && win_clone.is_focused().unwrap_or(false)
+                {
                     crate::animate_window_hide(&win_clone, None);
                 } else {
                     crate::position_window_at_bottom(&win_clone);
@@ -1084,4 +1100,3 @@ pub fn get_layout_config() -> serde_json::Value {
         "window_height": crate::constants::WINDOW_HEIGHT,
     })
 }
-

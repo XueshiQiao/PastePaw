@@ -139,7 +139,12 @@ export function ClipList({
     if (!clip) return null;
 
     return (
-      <div data-el="clip-cell" data-clip-id={clip.id} style={style} className="flex h-full items-center justify-center">
+      <div
+        data-el="clip-cell"
+        data-clip-id={clip.id}
+        style={style}
+        className="flex h-full items-center justify-center"
+      >
         <ClipCard
           clip={clip}
           isSelected={selectedClipId === clip.id}

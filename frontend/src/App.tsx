@@ -9,6 +9,7 @@ import { ControlBar } from './components/ControlBar';
 import { DragPreview } from './components/DragPreview';
 import { ContextMenu } from './components/ContextMenu';
 import { FolderModal } from './components/FolderModal';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { AiResultDialog } from './components/AiResultDialog';
 import { useKeyboard } from './hooks/useKeyboard';
 import { useTheme } from './hooks/useTheme';
@@ -63,6 +64,14 @@ function App() {
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
+  // Confirmation Dialog State
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    action: async () => {},
+  });
+
   // Using refs for event handlers to access latest state without re-attaching listeners
   const dragStateRef = useRef({
     isDragging: false,
@@ -78,10 +87,38 @@ function App() {
   const appWindow = getCurrentWindow();
   const selectedFolderRef = useRef(selectedFolder);
   selectedFolderRef.current = selectedFolder;
+  const clipsRef = useRef(clips);
+  clipsRef.current = clips;
   const loadPerfIdRef = useRef(0);
   const perfLogEnabled =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  const resetToFirstClip = useCallback((items?: AppClipboardItem[]) => {
+    const currentClips = items ?? clipsRef.current;
+    setSelectedClipId(currentClips[0]?.id ?? null);
+    setClipListResetToken((prev) => prev + 1);
+  }, []);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      resetToFirstClip();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    const unlistenFocusPromise = appWindow.onFocusChanged(({ payload: focused }) => {
+      if (focused) {
+        resetToFirstClip();
+      }
+    });
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      unlistenFocusPromise.then((unlisten) => {
+        if (typeof unlisten === 'function') unlisten();
+      });
+    };
+  }, [resetToFirstClip, appWindow]);
 
   useEffect(() => {
     invoke<Settings>('get_settings')
@@ -101,7 +138,9 @@ function App() {
     const unlistenDemo = import.meta.env.DEV
       ? Promise.all([
           listen('load-demo-data', () => {
-            setClips(generateDemoClips());
+            const demoClips = generateDemoClips();
+            setClips(demoClips);
+            resetToFirstClip(demoClips);
             setHasMore(false);
           }),
           listen('restore-actual-data', () => {
@@ -114,7 +153,7 @@ function App() {
       unlisten.then((f) => f());
       unlistenDemo.then((fs) => fs.forEach((f) => f()));
     };
-  }, []);
+  }, [resetToFirstClip]);
 
   const openSettings = useCallback(async () => {
     // Check if settings window already exists
@@ -202,6 +241,7 @@ function App() {
           });
         } else {
           setClips(data);
+          resetToFirstClip(data);
         }
 
         // If we got fewer than limit, no more clips
@@ -235,7 +275,7 @@ function App() {
         setIsLoading(false);
       }
     },
-    [clips.length]
+    [clips.length, resetToFirstClip]
   );
 
   const loadFolders = useCallback(async () => {
@@ -256,12 +296,19 @@ function App() {
     setSearchQuery(query);
   }, []);
 
-  const handleSelectFolder = useCallback((folderId: string | null) => {
-    // Reset view-level selection state whenever user switches/re-clicks folders.
-    setSelectedClipId(null);
-    setClipListResetToken((prev) => prev + 1);
-    setSelectedFolder(folderId);
-  }, []);
+  const handleSelectFolder = useCallback(
+    (folderId: string | null) => {
+      if (folderId === selectedFolderRef.current) {
+        resetToFirstClip();
+        return;
+      }
+      // Reset view-level selection state whenever user switches/re-clicks folders.
+      setSelectedClipId(null);
+      setClipListResetToken((prev) => prev + 1);
+      setSelectedFolder(folderId);
+    },
+    [resetToFirstClip]
+  );
 
   useEffect(() => {
     loadFolders();
@@ -405,8 +452,9 @@ function App() {
     if (!clipId) return;
     try {
       await invoke('delete_clip', { id: clipId, hardDelete: false });
-      setClips(clips.filter((c) => c.id !== clipId));
-      setSelectedClipId(null);
+      const nextClips = clips.filter((c) => c.id !== clipId);
+      setClips(nextClips);
+      setSelectedClipId(nextClips[0]?.id ?? null);
       // Refresh counts
       loadFolders();
       refreshTotalCount();
@@ -531,7 +579,13 @@ function App() {
         // If we are in a specific folder (not All)
         if (folderId !== selectedFolder) {
           // If moved to a different folder, remove from current view
-          setClips((prev) => prev.filter((c) => c.id !== clipId));
+          setClips((prev) => {
+            const nextClips = prev.filter((c) => c.id !== clipId);
+            if (selectedClipId === clipId) {
+              setSelectedClipId(nextClips[0]?.id ?? null);
+            }
+            return nextClips;
+          });
         }
       } else {
         // If we are in "All clips" view, just update the folder_id
@@ -635,6 +689,15 @@ function App() {
     }
   };
 
+  const requestDeleteFolder = (folderId: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: t('folders.deleteFolderTitle'),
+      message: t('folders.deleteFolderConfirm'),
+      action: () => handleDeleteFolder(folderId),
+    });
+  };
+
   return (
     <div data-el="app-root" className="relative h-screen w-full overflow-hidden">
       {/* Content Container */}
@@ -642,10 +705,7 @@ function App() {
         data-el="app-window"
         className={`relative h-full w-full overflow-hidden ${settings?.mica_effect === 'clear' ? 'bg-background/95' : ''}`}
       >
-        <div
-          data-el="app-frame"
-          className="flex h-full w-full flex-col font-sans text-foreground"
-        >
+        <div data-el="app-frame" className="flex h-full w-full flex-col font-sans text-foreground">
           {draggingClipId && (
             <DragPreview
               clip={clips.find((c) => c.id === draggingClipId)!}
@@ -705,7 +765,7 @@ function App() {
                       {
                         label: t('contextMenu.delete'),
                         danger: true,
-                        onClick: () => handleDeleteFolder(contextMenu.itemId),
+                        onClick: () => requestDeleteFolder(contextMenu.itemId),
                       },
                     ]
               }
@@ -779,6 +839,17 @@ function App() {
               title={aiResult.title}
               content={aiResult.content}
               onClose={() => setAiResult((prev) => ({ ...prev, isOpen: false }))}
+            />
+
+            <ConfirmDialog
+              isOpen={confirmDialog.isOpen}
+              title={confirmDialog.title}
+              message={confirmDialog.message}
+              onConfirm={async () => {
+                await confirmDialog.action();
+                setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+              }}
+              onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
             />
           </main>
           <Toaster richColors position="bottom-center" theme={effectiveTheme} />
