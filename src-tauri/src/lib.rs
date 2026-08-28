@@ -432,7 +432,6 @@ pub fn animate_window_show(window: &tauri::WebviewWindow) {
 
             let base_height = match card_size.as_str() {
                 "medium" => 236.0,
-                "small" => 206.0,
                 _ => constants::WINDOW_HEIGHT, // 266.0
             };
             let window_height_px = (base_height * scale_factor).round() as u32;
@@ -635,7 +634,6 @@ pub fn animate_window_hide(
 
             let base_height = match card_size.as_str() {
                 "medium" => 236.0,
-                "small" => 206.0,
                 _ => constants::WINDOW_HEIGHT, // 266.0
             };
             let window_height_px = (base_height * scale_factor).round() as u32;

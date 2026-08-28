@@ -546,8 +546,7 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
                           onChange={(val) => updateSetting('card_size', val)}
                           options={[
                             { value: 'large', label: i18n.language.startsWith('zh') ? '默认 (大)' : 'Default (Large)' },
-                            { value: 'medium', label: i18n.language.startsWith('zh') ? '中等' : 'Medium' },
-                            { value: 'small', label: i18n.language.startsWith('zh') ? '紧凑 (小)' : 'Compact (Small)' },
+                            { value: 'medium', label: i18n.language.startsWith('zh') ? '紧凑 (小)' : 'Compact' },
                           ]}
                         />
                       </div>

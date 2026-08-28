@@ -11,7 +11,7 @@ interface ClipListProps {
   hasMore: boolean;
   resetToken: number;
   selectedClipId: string | null;
-  cardSize?: 'large' | 'medium' | 'small';
+  cardSize?: 'large' | 'medium';
   onSelectClip: (clipId: string) => void;
   onPaste: (clipId: string) => void;
   onCopy: (clipId: string) => void;
@@ -43,7 +43,6 @@ export function ClipList({
   const layout = useMemo(() => {
     let cardWidth = 210;
     if (cardSize === 'medium') cardWidth = 178;
-    else if (cardSize === 'small') cardWidth = 148;
     return {
       cardWidth,
       columnWidth: cardWidth + 16,
