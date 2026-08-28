@@ -1,5 +1,5 @@
 export const LAYOUT = {
-  WINDOW_HEIGHT: 282, // keep sync with backend (constants.rs)
+  WINDOW_HEIGHT: 266, // keep sync with backend (constants.rs)
   CONTROL_BAR_HEIGHT: 50,
   CARD_WIDTH: 210,
   CARD_GAP: 16,
