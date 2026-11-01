@@ -17,7 +17,8 @@
     "emptyDesc": "Copiez quelque chose dans votre presse-papiers et cela apparaîtra ici.",
     "loadingClips": "Chargement des éléments...",
     "imageSize": "Image ({{size}} Ko)",
-    "textLength": "{{count}} caractères"
+    "textLength": "{{count}} caractères",
+    "richTextBadge": "Riche"
   },
   "folders": {
     "all": "Tous les éléments",
@@ -35,6 +36,7 @@
   "contextMenu": {
     "copy": "Copier",
     "paste": "Coller",
+    "pastePlainText": "Coller en texte brut",
     "delete": "Supprimer",
     "rename": "Renommer",
     "moveToFolder": "Déplacer vers le dossier",
@@ -82,6 +84,8 @@
     "pasteMethodDesc": "Choisissez le raccourci simulé pour le collage automatique",
     "pasteMethodShiftInsert": "Shift + Insert",
     "pasteMethodCtrlV": "Ctrl + V",
+    "preserveFormatting": "Conserver la mise en forme",
+    "preserveFormattingDesc": "Conserver les formats HTML et texte enrichi lors de la copie et du collage",
     "ignoreGhostClips": "Ignorer les éléments fantômes",
     "ignoreGhostClipsDesc": "Ignorer les éléments temporaires du presse-papiers",
     "hotkey": "Raccourci global",

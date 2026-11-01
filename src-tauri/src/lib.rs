@@ -870,12 +870,25 @@ pub fn update_window_size(window: &tauri::WebviewWindow) {
         let s = manager.get();
         let is_mica = s.mica_effect != "clear";
         let no_corners = !s.round_corners;
-        let side = if is_mica && no_corners { 0.0 } else { constants::WINDOW_MARGIN };
-        let bottom = if is_mica && no_corners { 0.0 } else { constants::WINDOW_MARGIN };
+        let side = if is_mica && no_corners {
+            0.0
+        } else {
+            constants::WINDOW_MARGIN
+        };
+        let bottom = if is_mica && no_corners {
+            0.0
+        } else {
+            constants::WINDOW_MARGIN
+        };
         (side, bottom, s.float_above_taskbar, s.card_size.clone())
     };
 
-    if let Some(monitor) = window.current_monitor().ok().flatten().or_else(|| crate::get_monitor_at_cursor(&window)) {
+    if let Some(monitor) = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| crate::get_monitor_at_cursor(&window))
+    {
         let scale_factor = monitor.scale_factor();
         let monitor_pos = monitor.position();
         let monitor_size = monitor.size();
@@ -900,7 +913,13 @@ pub fn update_window_size(window: &tauri::WebviewWindow) {
         let target_x = work_area.position.x + side_margin_px;
         let target_y = reference_bottom - (target_height as i32) - bottom_margin_px;
 
-        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: target_x, y: target_y }));
-        let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: target_width, height: target_height }));
+        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+            x: target_x,
+            y: target_y,
+        }));
+        let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+            width: target_width,
+            height: target_height,
+        }));
     }
 }

@@ -17,7 +17,8 @@
     "emptyDesc": "Copy something to your clipboard and it will appear here.",
     "loadingClips": "Loading clips...",
     "imageSize": "Image ({{size}}KB)",
-    "textLength": "{{count}} characters"
+    "textLength": "{{count}} characters",
+    "richTextBadge": "Rich"
   },
   "folders": {
     "all": "All Clips",
@@ -35,6 +36,7 @@
   "contextMenu": {
     "copy": "Copy",
     "paste": "Paste",
+    "pastePlainText": "Paste as Plain Text",
     "delete": "Delete",
     "rename": "Rename",
     "moveToFolder": "Move to Folder",
@@ -82,6 +84,8 @@
     "pasteMethodDesc": "Choose the shortcut simulated for auto-pasting",
     "pasteMethodShiftInsert": "Shift + Insert",
     "pasteMethodCtrlV": "Ctrl + V",
+    "preserveFormatting": "Preserve Rich Formatting",
+    "preserveFormattingDesc": "Save and restore HTML / Rich Text formats (preserves Markdown in editors like Typora)",
     "ignoreGhostClips": "Ignore Ghost Clips",
     "ignoreGhostClipsDesc": "Ignore temporary clipboard items",
     "hotkey": "Global Hotkey",

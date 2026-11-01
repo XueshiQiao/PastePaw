@@ -20,7 +20,16 @@ interface ClipCardProps {
 
 export const ClipCard = memo(
   forwardRef<HTMLDivElement, ClipCardProps>(function ClipCard(
-    { clip, isSelected, layout, onSelect, onPaste, onCopy, onDragStart, onContextMenu }: ClipCardProps,
+    {
+      clip,
+      isSelected,
+      layout,
+      onSelect,
+      onPaste,
+      onCopy,
+      onDragStart,
+      onContextMenu,
+    }: ClipCardProps,
     ref
   ) {
     const { t } = useTranslation();
@@ -63,6 +72,16 @@ export const ClipCard = memo(
         // Ignore invalid metadata and fall back to zero.
       }
       return 0;
+    }, [clip.clip_type, clip.metadata]);
+
+    const hasRichText = useMemo(() => {
+      if (clip.clip_type === 'image' || !clip.metadata) return false;
+      try {
+        const parsed = JSON.parse(clip.metadata) as { has_rich_text?: boolean };
+        return Boolean(parsed?.has_rich_text);
+      } catch {
+        return false;
+      }
     }, [clip.clip_type, clip.metadata]);
 
     // Memoize the content rendering
@@ -153,7 +172,7 @@ export const ClipCard = memo(
           }
           className={clsx(
             'relative flex h-full w-full cursor-pointer select-none flex-col overflow-hidden rounded-2xl border border-border bg-card/80 transition-all',
-            isSelected ? 'z-10 scale-[1.02] transform shadow-xl' : 'hover:-translate-y-1 shadow-lg',
+            isSelected ? 'z-10 scale-[1.02] transform shadow-xl' : 'shadow-lg hover:-translate-y-1',
             'group'
           )}
         >
@@ -217,13 +236,18 @@ export const ClipCard = memo(
 
           <div
             data-el="clip-card-footer"
-            className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-card via-card/100 to-transparent/0 px-3 py-1.5"
+            className="absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between bg-gradient-to-t from-card via-card/100 to-transparent/0 px-3 py-1.5"
           >
             <span className="text-[11px] font-medium text-muted-foreground/50">
               {clip.clip_type === 'image'
                 ? t('clipList.imageSize', { size: imageSizeKb })
                 : t('clipList.textLength', { count: clip.content.length })}
             </span>
+            {hasRichText && (
+              <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+                {t('clipList.richTextBadge')}
+              </span>
+            )}
           </div>
         </div>
       </div>

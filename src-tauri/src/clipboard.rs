@@ -16,6 +16,7 @@ use tauri_plugin_clipboard_x::{read_text, start_listening};
 use uuid::Uuid;
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::MAX_PATH;
+use windows::Win32::Foundation::{GlobalFree, HANDLE, HGLOBAL};
 #[cfg(target_os = "windows")]
 use windows::Win32::Graphics::Gdi::{
     CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
@@ -26,8 +27,13 @@ use windows::Win32::Graphics::Gdi::{
 use windows::Win32::Storage::FileSystem::{
     GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW,
 };
-#[cfg(target_os = "windows")]
-use windows::Win32::System::DataExchange::GetClipboardOwner;
+use windows::Win32::System::DataExchange::{
+    CloseClipboard, EmptyClipboard, GetClipboardData, GetClipboardOwner,
+    IsClipboardFormatAvailable, OpenClipboard, RegisterClipboardFormatW, SetClipboardData,
+};
+use windows::Win32::System::Memory::{
+    GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock, GMEM_MOVEABLE, GMEM_ZEROINIT,
+};
 #[cfg(target_os = "windows")]
 use windows::Win32::System::ProcessStatus::{GetModuleBaseNameW, GetModuleFileNameExW};
 #[cfg(target_os = "windows")]
@@ -62,6 +68,49 @@ static DEBOUNCE_COUNTER: AtomicU64 = AtomicU64::new(0);
 pub fn set_ignore_hash(hash: String) {
     let mut lock = IGNORE_HASH.lock();
     *lock = Some(hash);
+}
+
+pub fn set_last_stable_hash(hash: String) {
+    let mut lock = LAST_STABLE_HASH.lock();
+    *lock = Some(hash);
+}
+
+pub fn compute_stable_hash(content_hash: &str, html: Option<&[u8]>, rtf: Option<&[u8]>) -> String {
+    if html.is_none() && rtf.is_none() {
+        return content_hash.to_string();
+    }
+    let html_hash = html.map(calculate_hash).unwrap_or_default();
+    let rtf_hash = rtf.map(calculate_hash).unwrap_or_default();
+    calculate_hash(format!("{}|html:{}|rtf:{}", content_hash, html_hash, rtf_hash).as_bytes())
+}
+
+fn build_text_metadata(
+    existing_meta: Option<&str>,
+    has_html: bool,
+    has_rtf: bool,
+) -> Option<String> {
+    let mut val: serde_json::Value = existing_meta
+        .and_then(|s| serde_json::from_str(s).ok())
+        .unwrap_or_else(|| serde_json::json!({}));
+
+    if let Some(obj) = val.as_object_mut() {
+        if has_html || has_rtf {
+            obj.insert("has_rich_text".to_string(), serde_json::json!(true));
+            obj.insert("has_html".to_string(), serde_json::json!(has_html));
+            obj.insert("has_rtf".to_string(), serde_json::json!(has_rtf));
+        } else {
+            obj.remove("has_rich_text");
+            obj.remove("has_html");
+            obj.remove("has_rtf");
+        }
+        if obj.is_empty() {
+            None
+        } else {
+            Some(val.to_string())
+        }
+    } else {
+        None
+    }
 }
 
 pub fn init(app: &AppHandle, db: Arc<Database>) {
@@ -173,10 +222,18 @@ async fn process_clipboard_change(
     let mut clip_type = "text";
     let mut clip_content = Vec::new();
     let mut full_image_content: Option<Vec<u8>> = None;
+    let mut rich_html_content: Option<Vec<u8>> = None;
+    let mut rich_rtf_content: Option<Vec<u8>> = None;
     let mut clip_preview = String::new();
     let mut clip_hash = String::new();
     let mut metadata = String::new();
     let mut found_content = false;
+
+    // Check settings (cached via SettingsManager)
+    use crate::settings_manager::SettingsManager;
+    use tauri::Manager;
+    let manager = app.state::<Arc<SettingsManager>>();
+    let settings = manager.get();
 
     // Try Image (in-memory path, no temp file write).
     log::debug!("CLIPBOARD: Attempting to read image from clipboard");
@@ -217,18 +274,28 @@ async fn process_clipboard_change(
     }
 
     if !found_content {
-        // Try Text
+        // Try Text (and optional HTML / RTF rich formats)
         let text_read_started = std::time::Instant::now();
         if let Ok(text) = read_text().await {
-            text_read_ms = text_read_started.elapsed().as_millis();
-            let text = text.trim();
-            if !text.is_empty() {
-                clip_content = text.as_bytes().to_vec();
+            let trimmed = text.trim();
+            if !trimmed.is_empty() {
+                if settings.preserve_formatting {
+                    let (html, rtf) = read_clipboard_rich_formats();
+                    rich_html_content = html;
+                    rich_rtf_content = rtf;
+                }
+                text_read_ms = text_read_started.elapsed().as_millis();
+                clip_content = trimmed.as_bytes().to_vec();
                 clip_hash = calculate_hash(&clip_content);
                 clip_type = "text";
-                clip_preview = text.chars().take(200).collect::<String>();
+                clip_preview = trimmed.chars().take(200).collect::<String>();
                 found_content = true;
-                log::debug!("CLIPBOARD: Found text: {}", clip_preview);
+                log::debug!(
+                    "CLIPBOARD: Found text (html={}, rtf={}): {}",
+                    rich_html_content.is_some(),
+                    rich_rtf_content.is_some(),
+                    clip_preview
+                );
             }
         }
     }
@@ -237,15 +304,21 @@ async fn process_clipboard_change(
         return;
     }
 
+    let stable_hash = compute_stable_hash(
+        &clip_hash,
+        rich_html_content.as_deref(),
+        rich_rtf_content.as_deref(),
+    );
+
     // Stable Hash Check
     {
         let mut lock = LAST_STABLE_HASH.lock();
         if let Some(ref last_hash) = *lock {
-            if last_hash == &clip_hash {
+            if last_hash == &stable_hash {
                 return;
             }
         }
-        *lock = Some(clip_hash.clone());
+        *lock = Some(stable_hash);
     }
 
     // Check ignore self-paste
@@ -270,12 +343,6 @@ async fn process_clipboard_change(
         full_path,
         is_explicit_owner
     );
-
-    // Check settings (cached via SettingsManager)
-    use crate::settings_manager::SettingsManager;
-    use tauri::Manager;
-    let manager = app.state::<Arc<SettingsManager>>();
-    let settings = manager.get();
 
     if settings.ignore_ghost_clips && !is_explicit_owner {
         log::info!("CLIPBOARD: Ignoring ghost clip (unknown owner)");
@@ -315,16 +382,21 @@ async fn process_clipboard_change(
     let pool = &db.pool;
 
     let db_lookup_started = std::time::Instant::now();
-    let existing_uuid: Option<String> =
-        sqlx::query_scalar::<_, String>(r#"SELECT uuid FROM clips WHERE content_hash = ?"#)
-            .bind(&clip_hash)
-            .fetch_optional(pool)
-            .await
-            .unwrap_or(None);
+    let existing_clip: Option<(String, Option<String>)> =
+        sqlx::query_as::<_, (String, Option<String>)>(
+            r#"SELECT uuid, metadata FROM clips WHERE content_hash = ?"#,
+        )
+        .bind(&clip_hash)
+        .fetch_optional(pool)
+        .await
+        .unwrap_or(None);
     let db_lookup_ms = db_lookup_started.elapsed().as_millis();
 
+    let has_html = rich_html_content.is_some();
+    let has_rtf = rich_rtf_content.is_some();
+
     let db_write_started = std::time::Instant::now();
-    let emitted_id = if let Some(existing_id) = existing_uuid {
+    let emitted_id = if let Some((existing_id, existing_meta)) = existing_clip {
         was_existing = true;
         if clip_type == "image" {
             let _ = sqlx::query(
@@ -375,16 +447,44 @@ async fn process_clipboard_change(
                 }
             }
         } else {
-            let _ = sqlx::query(r#"UPDATE clips SET created_at = CURRENT_TIMESTAMP, is_deleted = 0, source_app = ?, source_icon = ? WHERE uuid = ?"#)
-                .bind(&source_app)
-                .bind(&source_icon)
+            let updated_meta = build_text_metadata(existing_meta.as_deref(), has_html, has_rtf);
+            let _ = sqlx::query(
+                r#"UPDATE clips SET created_at = CURRENT_TIMESTAMP, is_deleted = 0, source_app = ?, source_icon = ?, metadata = ? WHERE uuid = ?"#,
+            )
+            .bind(&source_app)
+            .bind(&source_icon)
+            .bind(&updated_meta)
+            .bind(&existing_id)
+            .execute(pool)
+            .await;
+
+            if has_html || has_rtf {
+                let _ = sqlx::query(
+                    r#"
+                    INSERT OR REPLACE INTO clip_formats (clip_uuid, html_content, rtf_content, created_at)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                    "#,
+                )
                 .bind(&existing_id)
+                .bind(&rich_html_content)
+                .bind(&rich_rtf_content)
                 .execute(pool)
                 .await;
+            } else {
+                let _ = sqlx::query(r#"DELETE FROM clip_formats WHERE clip_uuid = ?"#)
+                    .bind(&existing_id)
+                    .execute(pool)
+                    .await;
+            }
         }
         existing_id
     } else {
         let clip_uuid = Uuid::new_v4().to_string();
+        let initial_meta = if clip_type == "image" {
+            Some(metadata)
+        } else {
+            build_text_metadata(None, has_html, has_rtf)
+        };
 
         let _ = sqlx::query(
             r#"
@@ -400,11 +500,7 @@ async fn process_clipboard_change(
         .bind(false)
         .bind(&source_app)
         .bind(&source_icon)
-        .bind(if clip_type == "image" {
-            Some(metadata)
-        } else {
-            None
-        })
+        .bind(initial_meta)
         .execute(pool)
         .await;
 
@@ -438,6 +534,18 @@ async fn process_clipboard_change(
                     }
                 }
             }
+        } else if has_html || has_rtf {
+            let _ = sqlx::query(
+                r#"
+                INSERT OR REPLACE INTO clip_formats (clip_uuid, html_content, rtf_content, created_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                "#,
+            )
+            .bind(&clip_uuid)
+            .bind(&rich_html_content)
+            .bind(&rich_rtf_content)
+            .execute(pool)
+            .await;
         }
         clip_uuid
     };
@@ -936,4 +1044,174 @@ pub fn send_paste_input(method: &str) {
         let result = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
         log::info!("send_paste_input: SendInput returned {}", result);
     }
+}
+
+const CF_UNICODETEXT_ID: u32 = 13;
+const MAX_RICH_FORMAT_BYTES: usize = 10 * 1024 * 1024;
+
+struct Win32ClipboardGuard;
+
+impl Win32ClipboardGuard {
+    fn open_with_retry(attempts: usize, delay_ms: u64) -> Result<Self, String> {
+        let mut last_err = String::new();
+        for i in 0..attempts {
+            match unsafe { OpenClipboard(None) } {
+                Ok(()) => return Ok(Self),
+                Err(e) => {
+                    last_err = e.to_string();
+                    if i + 1 < attempts {
+                        std::thread::sleep(std::time::Duration::from_millis(delay_ms));
+                    }
+                }
+            }
+        }
+        Err(format!("OpenClipboard failed: {}", last_err))
+    }
+}
+
+impl Drop for Win32ClipboardGuard {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = CloseClipboard();
+        }
+    }
+}
+
+unsafe fn read_registered_format_bytes(format_id: u32) -> Option<Vec<u8>> {
+    if format_id == 0 || IsClipboardFormatAvailable(format_id).is_err() {
+        return None;
+    }
+
+    let handle = GetClipboardData(format_id).ok()?;
+    if handle.0.is_null() {
+        return None;
+    }
+
+    let hglobal = HGLOBAL(handle.0);
+    let size = GlobalSize(hglobal);
+    if size == 0 || size > MAX_RICH_FORMAT_BYTES {
+        return None;
+    }
+
+    let ptr = GlobalLock(hglobal);
+    if ptr.is_null() {
+        return None;
+    }
+
+    let raw = std::slice::from_raw_parts(ptr as *const u8, size);
+    let end = raw.iter().position(|&b| b == 0).unwrap_or(raw.len());
+    let result = if end > 0 {
+        Some(raw[..end].to_vec())
+    } else {
+        None
+    };
+
+    let _ = GlobalUnlock(hglobal);
+    result
+}
+
+pub fn read_clipboard_rich_formats() -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+    unsafe {
+        let cf_html = RegisterClipboardFormatW(windows::core::w!("HTML Format"));
+        let cf_rtf = RegisterClipboardFormatW(windows::core::w!("Rich Text Format"));
+
+        let html_avail = cf_html != 0 && IsClipboardFormatAvailable(cf_html).is_ok();
+        let rtf_avail = cf_rtf != 0 && IsClipboardFormatAvailable(cf_rtf).is_ok();
+        if !html_avail && !rtf_avail {
+            return (None, None);
+        }
+
+        let _guard = match Win32ClipboardGuard::open_with_retry(5, 10) {
+            Ok(g) => g,
+            Err(e) => {
+                log::warn!(
+                    "CLIPBOARD: Failed to open clipboard for rich formats: {}",
+                    e
+                );
+                return (None, None);
+            }
+        };
+
+        let html = if html_avail {
+            read_registered_format_bytes(cf_html)
+        } else {
+            None
+        };
+        let rtf = if rtf_avail {
+            read_registered_format_bytes(cf_rtf)
+        } else {
+            None
+        };
+
+        (html, rtf)
+    }
+}
+
+unsafe fn set_hglobal_bytes(format_id: u32, bytes_with_terminator: &[u8]) -> Result<(), String> {
+    let hglobal = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, bytes_with_terminator.len())
+        .map_err(|e| format!("GlobalAlloc failed: {}", e))?;
+
+    let ptr = GlobalLock(hglobal);
+    if ptr.is_null() {
+        let _ = GlobalFree(Some(hglobal));
+        return Err("GlobalLock returned null".to_string());
+    }
+
+    std::ptr::copy_nonoverlapping(
+        bytes_with_terminator.as_ptr(),
+        ptr as *mut u8,
+        bytes_with_terminator.len(),
+    );
+    let _ = GlobalUnlock(hglobal);
+
+    if let Err(e) = SetClipboardData(format_id, Some(HANDLE(hglobal.0))) {
+        let _ = GlobalFree(Some(hglobal));
+        return Err(format!("SetClipboardData({}) failed: {}", format_id, e));
+    }
+
+    Ok(())
+}
+
+pub fn write_clipboard_with_rich_formats(
+    plain_text: &str,
+    html_bytes: Option<&[u8]>,
+    rtf_bytes: Option<&[u8]>,
+) -> Result<(), String> {
+    let _guard = Win32ClipboardGuard::open_with_retry(5, 25)?;
+
+    unsafe {
+        EmptyClipboard().map_err(|e| format!("EmptyClipboard failed: {}", e))?;
+
+        let mut utf16_bytes = Vec::with_capacity((plain_text.len() + 1) * 2);
+        for unit in plain_text.encode_utf16().chain(std::iter::once(0u16)) {
+            utf16_bytes.extend_from_slice(&unit.to_le_bytes());
+        }
+        set_hglobal_bytes(CF_UNICODETEXT_ID, &utf16_bytes)?;
+
+        if let Some(html) = html_bytes.filter(|b| !b.is_empty()) {
+            let cf_html = RegisterClipboardFormatW(windows::core::w!("HTML Format"));
+            if cf_html != 0 {
+                let mut buf = Vec::with_capacity(html.len() + 1);
+                buf.extend_from_slice(html);
+                buf.push(0);
+                if let Err(e) = set_hglobal_bytes(cf_html, &buf) {
+                    log::warn!("CLIPBOARD: Failed to set HTML Format: {}", e);
+                }
+            }
+        }
+
+        if let Some(rtf) = rtf_bytes.filter(|b| !b.is_empty()) {
+            let cf_rtf = RegisterClipboardFormatW(windows::core::w!("Rich Text Format"));
+            if cf_rtf != 0 {
+                let mut buf = Vec::with_capacity(rtf.len() + 1);
+                buf.extend_from_slice(rtf);
+                buf.push(0);
+                if let Err(e) = set_hglobal_bytes(cf_rtf, &buf) {
+                    log::warn!("CLIPBOARD: Failed to set Rich Text Format: {}", e);
+                }
+            }
+        }
+    }
+
+    Ok(())
 }

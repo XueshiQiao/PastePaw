@@ -66,7 +66,7 @@ export function AiResultDialog({ isOpen, title, content, onClose }: AiResultDial
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed">
+          <div className="prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert">
             {content}
           </div>
         </div>

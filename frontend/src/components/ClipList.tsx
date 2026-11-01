@@ -4,7 +4,6 @@ import { Grid, GridProps, useGridCallbackRef } from 'react-window';
 import { ClipboardItem } from '../types';
 import { ClipCard } from './ClipCard';
 
-
 interface ClipListProps {
   clips: ClipboardItem[];
   isLoading: boolean;
@@ -47,7 +46,7 @@ export function ClipList({
       cardWidth,
       columnWidth: cardWidth + 16,
       cardGap: 16,
-      cardVerticalPadding: 8
+      cardVerticalPadding: 8,
     };
   }, [cardSize]);
 

@@ -288,10 +288,7 @@ function App() {
       setFolders(data);
 
       const currentSelected = selectedFolderRef.current;
-      if (
-        currentSelected !== null &&
-        !data.some((f) => String(f.id) === String(currentSelected))
-      ) {
+      if (currentSelected !== null && !data.some((f) => String(f.id) === String(currentSelected))) {
         selectedFolderRef.current = null;
         setSelectedFolder(null);
         setSelectedClipId(null);
@@ -494,7 +491,7 @@ function App() {
     []
   );
 
-  const handlePaste = async (clipId: string) => {
+  const handlePaste = async (clipId: string, plainTextOnly: boolean = false) => {
     try {
       const clip = clips.find((c) => c.id === clipId);
       if (clip && clip.clip_type === 'image') {
@@ -506,7 +503,7 @@ function App() {
         }
       }
 
-      invoke('paste_clip', { id: clipId }).catch(console.error);
+      invoke('paste_clip', { id: clipId, plainTextOnly }).catch(console.error);
     } catch (error) {
       console.error('Failed to paste clip:', error);
     }
@@ -736,6 +733,14 @@ function App() {
               options={
                 contextMenu.type === 'card'
                   ? [
+                      ...(clips.find((c) => c.id === contextMenu.itemId)?.clip_type !== 'image'
+                        ? [
+                            {
+                              label: t('contextMenu.pastePlainText'),
+                              onClick: () => handlePaste(contextMenu.itemId, true),
+                            },
+                          ]
+                        : []),
                       {
                         label: `${settings?.ai_title_summarize || t('contextMenu.summarize')}`,
                         onClick: () =>

@@ -11,11 +11,16 @@ export function useAutoUpdater(componentName: string = 'App') {
   const [updateAvailable, setUpdateAvailable] = useState<UpdateInfo | null>(null);
 
   useEffect(() => {
-    console.log(`[useAutoUpdater:${componentName}] Hook mounted. Querying Rust get_available_update...`);
+    console.log(
+      `[useAutoUpdater:${componentName}] Hook mounted. Querying Rust get_available_update...`
+    );
 
     invoke<UpdateInfo | null>('get_available_update')
       .then((version) => {
-        console.log(`[useAutoUpdater:${componentName}] get_available_update resolved with:`, version);
+        console.log(
+          `[useAutoUpdater:${componentName}] get_available_update resolved with:`,
+          version
+        );
         if (version) {
           setUpdateAvailable(version);
         }
@@ -26,7 +31,10 @@ export function useAutoUpdater(componentName: string = 'App') {
 
     let unlisten: (() => void) | undefined;
     listen<UpdateInfo | null>('update-available', (event) => {
-      console.log(`[useAutoUpdater:${componentName}] Received update-available event:`, event.payload);
+      console.log(
+        `[useAutoUpdater:${componentName}] Received update-available event:`,
+        event.payload
+      );
       setUpdateAvailable(event.payload ?? null);
     })
       .then((fn) => {

@@ -17,7 +17,8 @@
     "emptyDesc": "复制内容后将显示在这里",
     "loadingClips": "加载中...",
     "imageSize": "图片 ({{size}}KB)",
-    "textLength": "{{count}} 个字符"
+    "textLength": "{{count}} 个字符",
+    "richTextBadge": "富文本"
   },
   "folders": {
     "all": "全部",
@@ -35,6 +36,7 @@
   "contextMenu": {
     "copy": "复制",
     "paste": "粘贴",
+    "pastePlainText": "粘贴为纯文本",
     "delete": "删除",
     "rename": "重命名",
     "moveToFolder": "移动到文件夹",
@@ -82,6 +84,8 @@
     "pasteMethodDesc": "选择自动粘贴时模拟的快捷键",
     "pasteMethodShiftInsert": "Shift + Insert",
     "pasteMethodCtrlV": "Ctrl + V",
+    "preserveFormatting": "保留富文本格式",
+    "preserveFormattingDesc": "保存并恢复剪贴板中的 HTML / 富文本格式（支持粘贴到 Typora 等编辑器保留 Markdown）",
     "ignoreGhostClips": "忽略临时剪贴",
     "ignoreGhostClipsDesc": "忽略临时剪贴板项目",
     "hotkey": "全局快捷键",

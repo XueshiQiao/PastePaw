@@ -33,6 +33,7 @@ export interface Settings {
   card_size?: 'large' | 'medium';
   auto_paste: boolean;
   paste_method?: 'shift_insert' | 'ctrl_v';
+  preserve_formatting?: boolean;
   ignore_ghost_clips: boolean;
   ai_provider?: string;
   ai_api_key?: string;

@@ -133,6 +133,20 @@ impl Database {
         .execute(&self.pool)
         .await?;
 
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS clip_formats (
+                clip_uuid TEXT PRIMARY KEY,
+                html_content BLOB,
+                rtf_content BLOB,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (clip_uuid) REFERENCES clips(uuid) ON DELETE CASCADE
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         Ok(())
     }
 }

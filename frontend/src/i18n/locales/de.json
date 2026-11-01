@@ -17,7 +17,8 @@
     "emptyDesc": "Kopieren Sie etwas in Ihre Zwischenablage, dann erscheint es hier.",
     "loadingClips": "Einträge werden geladen...",
     "imageSize": "Bild ({{size}} KB)",
-    "textLength": "{{count}} Zeichen"
+    "textLength": "{{count}} Zeichen",
+    "richTextBadge": "Format"
   },
   "folders": {
     "all": "Alle Einträge",
@@ -35,6 +36,7 @@
   "contextMenu": {
     "copy": "Kopieren",
     "paste": "Einfügen",
+    "pastePlainText": "Als unformatierten Text einfügen",
     "delete": "Löschen",
     "rename": "Umbenennen",
     "moveToFolder": "In Ordner verschieben",
@@ -82,6 +84,8 @@
     "pasteMethodDesc": "Wählen Sie den für das automatische Einfügen simulierten Kurzbefehl",
     "pasteMethodShiftInsert": "Shift + Insert",
     "pasteMethodCtrlV": "Ctrl + V",
+    "preserveFormatting": "Formatierung beibehalten",
+    "preserveFormattingDesc": "HTML- und Rich-Text-Formate beim Kopieren und Einfügen beibehalten",
     "ignoreGhostClips": "Geistereinträge ignorieren",
     "ignoreGhostClipsDesc": "Temporäre Zwischenablageeinträge ignorieren",
     "hotkey": "Globale Tastenkombination",

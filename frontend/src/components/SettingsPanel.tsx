@@ -372,7 +372,9 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
   const handleDownloadAndInstall = async () => {
     try {
       setIsUpdating(true);
-      const dlToast = toast.loading(t('settings.downloadingUpdate', { defaultValue: 'Downloading & installing update...' }));
+      const dlToast = toast.loading(
+        t('settings.downloadingUpdate', { defaultValue: 'Downloading & installing update...' })
+      );
       await invoke('install_update');
       toast.dismiss(dlToast);
     } catch (e) {
@@ -542,14 +544,24 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
 
                       <div className="space-y-3">
                         <label className="block">
-                          <span className="text-sm font-medium">{i18n.language.startsWith('zh') ? '界面大小' : 'Display Size'}</span>
+                          <span className="text-sm font-medium">
+                            {i18n.language.startsWith('zh') ? '界面大小' : 'Display Size'}
+                          </span>
                         </label>
                         <Select
                           value={settings.card_size || 'large'}
                           onChange={(val) => updateSetting('card_size', val)}
                           options={[
-                            { value: 'large', label: i18n.language.startsWith('zh') ? '默认 (大)' : 'Default (Large)' },
-                            { value: 'medium', label: i18n.language.startsWith('zh') ? '紧凑 (小)' : 'Compact' },
+                            {
+                              value: 'large',
+                              label: i18n.language.startsWith('zh')
+                                ? '默认 (大)'
+                                : 'Default (Large)',
+                            },
+                            {
+                              value: 'medium',
+                              label: i18n.language.startsWith('zh') ? '紧凑 (小)' : 'Compact',
+                            },
                           ]}
                         />
                       </div>
@@ -654,6 +666,30 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
                         />
                       </div>
                     )}
+
+                    <div className="flex items-center justify-between rounded-lg border border-border bg-accent/20 p-3">
+                      <div>
+                        <span className="text-sm font-medium">
+                          {t('settings.preserveFormatting')}
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          {t('settings.preserveFormattingDesc')}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          updateSetting(
+                            'preserve_formatting',
+                            !(settings.preserve_formatting ?? true)
+                          )
+                        }
+                        className={`h-6 w-11 rounded-full transition-colors ${(settings.preserve_formatting ?? true) ? 'bg-primary' : 'bg-accent'}`}
+                      >
+                        <div
+                          className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${(settings.preserve_formatting ?? true) ? 'translate-x-5' : 'translate-x-0.5'}`}
+                        />
+                      </button>
+                    </div>
 
                     <div className="flex items-center justify-between rounded-lg border border-border bg-accent/20 p-3">
                       <div>
@@ -822,8 +858,6 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
                       </button>
                     </div>
                   </section>
-
-
                 </>
               )}
 
@@ -1126,25 +1160,32 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
       </div>
 
       {showUpdateModal && updateAvailable && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-6 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+        <div className="animate-in fade-in zoom-in fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-6 backdrop-blur-sm duration-200">
           <div className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-3">
-              <h3 className="text-lg font-semibold text-foreground">Update Available (v{updateAvailable.version})</h3>
-              <button onClick={() => setShowUpdateModal(false)} className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+              <h3 className="text-lg font-semibold text-foreground">
+                Update Available (v{updateAvailable.version})
+              </h3>
+              <button
+                onClick={() => setShowUpdateModal(false)}
+                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
                 <X size={18} />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto px-6 py-4">
-              <div className="prose prose-sm dark:prose-invert prose-blue max-w-none">
-                <ReactMarkdown>{updateAvailable.body || '*No release notes provided.*'}</ReactMarkdown>
+              <div className="prose prose-sm prose-blue max-w-none dark:prose-invert">
+                <ReactMarkdown>
+                  {updateAvailable.body || '*No release notes provided.*'}
+                </ReactMarkdown>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/30 px-4 py-3">
               <button
                 onClick={() => setShowUpdateModal(false)}
-                className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 disabled={isUpdating}
               >
                 Close

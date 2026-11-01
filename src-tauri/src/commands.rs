@@ -490,9 +490,12 @@ pub async fn get_clip_detail(
     get_clip(id, db).await
 }
 
+type RichFormatRow = (Option<Vec<u8>>, Option<Vec<u8>>);
+
 #[tauri::command]
 pub async fn paste_clip(
     id: String,
+    plain_text_only: Option<bool>,
     app: AppHandle,
     window: tauri::WebviewWindow,
     db: tauri::State<'_, Arc<Database>>,
@@ -512,6 +515,9 @@ pub async fn paste_clip(
 
             let content_hash = clip.content_hash.clone();
             let uuid = clip.uuid.clone();
+            let settings = app.state::<Arc<SettingsManager>>().get();
+            let use_rich_formats =
+                !plain_text_only.unwrap_or(false) && settings.preserve_formatting;
 
             // Stop monitor
             if let Err(e) = stop_listening().await {
@@ -522,32 +528,71 @@ pub async fn paste_clip(
 
             if clip.clip_type == "image" {
                 crate::clipboard::set_ignore_hash(content_hash.clone());
+                crate::clipboard::set_last_stable_hash(content_hash.clone());
                 // Frontend writes image via navigator.clipboard API.
             } else {
                 let content_str = String::from_utf8_lossy(&clip.content).to_string();
-                crate::clipboard::set_ignore_hash(content_hash.clone());
-                //crate::clipboard::set_last_stable_hash(content_hash.clone());
+                let rich_formats: Option<RichFormatRow> = if use_rich_formats {
+                    sqlx::query_as(
+                        r#"SELECT html_content, rtf_content FROM clip_formats WHERE clip_uuid = ?"#,
+                    )
+                    .bind(&uuid)
+                    .fetch_optional(pool)
+                    .await
+                    .unwrap_or(None)
+                } else {
+                    None
+                };
 
-                let mut last_err = String::new();
-                for i in 0..5 {
-                    match write_text(content_str.clone()).await {
-                        Ok(_) => {
-                            last_err.clear();
-                            break;
-                        }
-                        Err(e) => {
-                            last_err = e.to_string();
-                            log::warn!(
-                                "Clipboard write (text) attempt {} failed: {}. Retrying...",
-                                i + 1,
-                                last_err
-                            );
-                            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                let (html_bytes, rtf_bytes) = rich_formats
+                    .map(|(h, r)| (h.filter(|b| !b.is_empty()), r.filter(|b| !b.is_empty())))
+                    .unwrap_or((None, None));
+
+                let stable_hash = crate::clipboard::compute_stable_hash(
+                    &content_hash,
+                    html_bytes.as_deref(),
+                    rtf_bytes.as_deref(),
+                );
+                crate::clipboard::set_ignore_hash(content_hash.clone());
+                crate::clipboard::set_last_stable_hash(stable_hash);
+
+                if html_bytes.is_some() || rtf_bytes.is_some() {
+                    if let Err(e) = crate::clipboard::write_clipboard_with_rich_formats(
+                        &content_str,
+                        html_bytes.as_deref(),
+                        rtf_bytes.as_deref(),
+                    ) {
+                        log::warn!(
+                            "Rich clipboard write failed ({}), falling back to plain text",
+                            e
+                        );
+                        if let Err(fallback_err) = write_text(content_str.clone()).await {
+                            final_res =
+                                Err(format!("Failed to set clipboard text: {}", fallback_err));
                         }
                     }
-                }
-                if !last_err.is_empty() {
-                    final_res = Err(format!("Failed to set clipboard text: {}", last_err));
+                } else {
+                    let mut last_err = String::new();
+                    for i in 0..5 {
+                        match write_text(content_str.clone()).await {
+                            Ok(_) => {
+                                last_err.clear();
+                                break;
+                            }
+                            Err(e) => {
+                                last_err = e.to_string();
+                                log::warn!(
+                                    "Clipboard write (text) attempt {} failed: {}. Retrying...",
+                                    i + 1,
+                                    last_err
+                                );
+                                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                            }
+                        }
+                    }
+                    if !last_err.is_empty() {
+                        final_res = Err(format!("Failed to set clipboard text: {}", last_err));
+                    }
                 }
             }
 
@@ -573,8 +618,6 @@ pub async fn paste_clip(
                 let _ = window.emit("clipboard-write", &content);
 
                 // Check auto_paste setting
-                let manager = app.state::<Arc<SettingsManager>>();
-                let settings = manager.get();
                 let auto_paste = settings.auto_paste;
                 let paste_method = settings.paste_method.clone();
                 log::info!(
@@ -617,6 +660,12 @@ pub async fn delete_clip(
         delete_clip_image_file_by_uuid(pool, &id).await?;
 
         sqlx::query(r#"DELETE FROM clip_images WHERE clip_uuid = ?"#)
+            .bind(&id)
+            .execute(pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        sqlx::query(r#"DELETE FROM clip_formats WHERE clip_uuid = ?"#)
             .bind(&id)
             .execute(pool)
             .await
@@ -1020,6 +1069,10 @@ pub async fn clear_all_clips(
         let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
         sqlx::query(r#"DELETE FROM clip_images"#)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
+        sqlx::query(r#"DELETE FROM clip_formats"#)
             .execute(&mut *tx)
             .await
             .map_err(|e| e.to_string())?;

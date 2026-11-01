@@ -369,10 +369,10 @@ export function ControlBar({
         {updateAvailable && (
           <button
             onClick={onMoreClick}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground relative group"
+            className="group relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             title={t('settings.updateAvailable', { version: updateAvailable.version })}
           >
-            <div className="absolute top-[6px] right-[6px] h-2 w-2 rounded-full border-2 border-background bg-blue-500 z-10 animate-pulse"></div>
+            <div className="absolute right-[6px] top-[6px] z-10 h-2 w-2 animate-pulse rounded-full border-2 border-background bg-blue-500"></div>
             <ArrowUpCircle size={20} />
           </button>
         )}
