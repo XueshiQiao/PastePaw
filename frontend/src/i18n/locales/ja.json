@@ -17,8 +17,8 @@
     "emptyDesc": "何かをクリップボードにコピーすると、ここに表示されます。",
     "loadingClips": "クリップを読み込み中...",
     "imageSize": "画像 ({{size}}KB)",
-    "textLength": "{{count}} 文字",
-    "richTextBadge": "書式"
+    "textLength": "テキスト ({{count}} 文字)",
+    "richTextLength": "リッチテキスト ({{count}} 文字)"
   },
   "folders": {
     "all": "すべてのクリップ",
@@ -84,6 +84,8 @@
     "pasteMethodDesc": "自動貼り付け時にシミュレートするショートカットを選択",
     "pasteMethodShiftInsert": "Shift + Insert",
     "pasteMethodCtrlV": "Ctrl + V",
+    "moveToTopOnPaste": "貼り付け後に先頭へ移動",
+    "moveToTopOnPasteDesc": "履歴から貼り付けた項目を自動的にリストの先頭に移動します",
     "preserveFormatting": "リッチテキスト書式を保持",
     "preserveFormattingDesc": "コピーと貼り付け時に HTML / リッチテキスト書式を保持します",
     "ignoreGhostClips": "ゴーストクリップを無視",
@@ -121,6 +123,7 @@
     "aiFixGrammarPlaceholder": "デフォルト: あなたは有能なアシスタントです。文法を修正し、文体を改善してください...",
     "newFolderPlaceholder": "新しいフォルダー名",
     "noFolders": "カスタムフォルダーはまだ作成されていません。",
+    "moreWorks": "その他の作品",
     "checkForUpdates": "アップデートを確認",
     "checkingUpdates": "アップデートを確認中...",
     "updateAvailable": "アップデートがあります! バージョン {{version}}",

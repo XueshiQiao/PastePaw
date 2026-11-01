@@ -168,4 +168,25 @@
     mask-image: linear-gradient(to right, black 85%, transparent 100%);
     -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
   }
+
+  /* Continuous curvature corners (Squircle / Superellipse, Apple .continuous style) */
+  .squircle-card {
+    border-radius: 16px;
+  }
+
+  .squircle-card-glow {
+    border-radius: 17px;
+  }
+
+  @supports (corner-shape: squircle) {
+    .squircle-card {
+      border-radius: 28px;
+      corner-shape: squircle;
+    }
+
+    .squircle-card-glow {
+      border-radius: 29px;
+      corner-shape: squircle;
+    }
+  }
 }

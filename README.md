@@ -8,7 +8,9 @@
 
 <p align="center">
   <a href="README_CN.md">中文</a> •
-  <a href="README.md">English</a>
+  <a href="README.md">English</a> •
+  <a href="https://pastepaw.com/">Website</a> •
+  <a href="https://xueshi.dev">Author</a>
 </p>
 
 <p align="center">

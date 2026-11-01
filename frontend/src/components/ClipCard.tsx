@@ -171,7 +171,7 @@ export const ClipCard = memo(
             } as React.CSSProperties
           }
           className={clsx(
-            'relative flex h-full w-full cursor-pointer select-none flex-col overflow-hidden rounded-2xl border border-border bg-card/80 transition-all',
+            'squircle-card relative flex h-full w-full cursor-pointer select-none flex-col overflow-hidden border border-border bg-card/80 transition-all',
             isSelected ? 'z-10 scale-[1.02] transform shadow-xl' : 'shadow-lg hover:-translate-y-1',
             'group'
           )}
@@ -180,7 +180,7 @@ export const ClipCard = memo(
           {!isSelected && (
             <motion.div
               data-el="clip-card-glow"
-              className="pointer-events-none absolute -inset-px z-20 rounded-[17px] p-[2px]"
+              className="squircle-card-glow pointer-events-none absolute -inset-px z-20 p-[2px]"
               style={{
                 background: glowBackground,
                 WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
@@ -194,7 +194,7 @@ export const ClipCard = memo(
 
           <div
             data-el="clip-card-header"
-            className="relative z-10 flex flex-shrink-0 items-center gap-2 px-2 py-1.5"
+            className="relative z-10 flex flex-shrink-0 items-center gap-2 px-2.5 py-1.5"
             style={{ backgroundColor: `hsl(${appHue} 82% 60%)` }}
           >
             {clip.source_icon && (
@@ -238,16 +238,13 @@ export const ClipCard = memo(
             data-el="clip-card-footer"
             className="absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between bg-gradient-to-t from-card via-card/100 to-transparent/0 px-3 py-1.5"
           >
-            <span className="text-[11px] font-medium text-muted-foreground/50">
+            <span className="truncate text-[11px] font-medium text-muted-foreground/50">
               {clip.clip_type === 'image'
                 ? t('clipList.imageSize', { size: imageSizeKb })
-                : t('clipList.textLength', { count: clip.content.length })}
+                : hasRichText
+                  ? t('clipList.richTextLength', { count: clip.content.length })
+                  : t('clipList.textLength', { count: clip.content.length })}
             </span>
-            {hasRichText && (
-              <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
-                {t('clipList.richTextBadge')}
-              </span>
-            )}
           </div>
         </div>
       </div>

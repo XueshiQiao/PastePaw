@@ -53,7 +53,7 @@ export function DragPreview({ clip, position }: DragPreviewProps) {
 
   return (
     <div
-      className="pointer-events-none fixed z-50 w-64 overflow-hidden rounded-2xl border border-border bg-card opacity-90 shadow-xl ring-2 ring-primary"
+      className="squircle-card pointer-events-none fixed z-50 w-64 overflow-hidden border border-border bg-card opacity-90 shadow-xl ring-2 ring-primary"
       style={{
         left: position.x,
         top: position.y,

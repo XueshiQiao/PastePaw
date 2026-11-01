@@ -596,12 +596,22 @@ pub async fn paste_clip(
                 }
             }
 
-            // Manually perform the LRU bump (update created_at)
-            let _ =
-                sqlx::query(r#"UPDATE clips SET created_at = CURRENT_TIMESTAMP WHERE uuid = ?"#)
-                    .bind(&uuid)
-                    .execute(pool)
-                    .await;
+            // Perform LRU bump (update created_at) only when move_to_top_on_paste is enabled
+            if settings.move_to_top_on_paste {
+                let _ = sqlx::query(
+                    r#"UPDATE clips SET created_at = CURRENT_TIMESTAMP, last_accessed = CURRENT_TIMESTAMP WHERE uuid = ?"#,
+                )
+                .bind(&uuid)
+                .execute(pool)
+                .await;
+            } else {
+                let _ = sqlx::query(
+                    r#"UPDATE clips SET last_accessed = CURRENT_TIMESTAMP WHERE uuid = ?"#,
+                )
+                .bind(&uuid)
+                .execute(pool)
+                .await;
+            }
 
             // Restart monitor
             let app_clone = app.clone();
@@ -616,7 +626,9 @@ pub async fn paste_clip(
                     String::from_utf8_lossy(&clip.content).to_string()
                 };
                 let _ = window.emit("clipboard-write", &content);
-                let _ = app.emit("clipboard-change", ());
+                if settings.move_to_top_on_paste {
+                    let _ = app.emit("clipboard-change", ());
+                }
 
                 // Check auto_paste setting
                 let auto_paste = settings.auto_paste;

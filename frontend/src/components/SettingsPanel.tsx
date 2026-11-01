@@ -670,6 +670,30 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
                     <div className="flex items-center justify-between rounded-lg border border-border bg-accent/20 p-3">
                       <div>
                         <span className="text-sm font-medium">
+                          {t('settings.moveToTopOnPaste')}
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          {t('settings.moveToTopOnPasteDesc')}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          updateSetting(
+                            'move_to_top_on_paste',
+                            !(settings.move_to_top_on_paste ?? true)
+                          )
+                        }
+                        className={`h-6 w-11 rounded-full transition-colors ${(settings.move_to_top_on_paste ?? true) ? 'bg-primary' : 'bg-accent'}`}
+                      >
+                        <div
+                          className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${(settings.move_to_top_on_paste ?? true) ? 'translate-x-5' : 'translate-x-0.5'}`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border border-border bg-accent/20 p-3">
+                      <div>
+                        <span className="text-sm font-medium">
                           {t('settings.preserveFormatting')}
                         </span>
                         <p className="text-xs text-muted-foreground">
@@ -1132,15 +1156,21 @@ export function SettingsPanel({ settings: initialSettings, onClose }: SettingsPa
           >
             PastePaw {appVersion || '...'}
           </button>
-          <div className="flex gap-2 text-xs text-muted-foreground">
-            <a
-              href="https://pastepaw.com"
-              target="_blank"
-              rel="noopener noreferrer"
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <button
+              onClick={() => openUrl('https://pastepaw.com').catch(console.error)}
               className="underline hover:text-foreground"
             >
               © 2026 PastePaw
-            </a>
+            </button>
+            <span>•</span>
+            <button
+              onClick={() => openUrl('https://xueshi.dev').catch(console.error)}
+              title="https://xueshi.dev"
+              className="underline hover:text-foreground"
+            >
+              {t('settings.moreWorks')}
+            </button>
             <span>•</span>
             {updateAvailable ? (
               <button

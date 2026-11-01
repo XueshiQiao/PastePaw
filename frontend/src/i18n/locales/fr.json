@@ -17,8 +17,8 @@
     "emptyDesc": "Copiez quelque chose dans votre presse-papiers et cela apparaîtra ici.",
     "loadingClips": "Chargement des éléments...",
     "imageSize": "Image ({{size}} Ko)",
-    "textLength": "{{count}} caractères",
-    "richTextBadge": "Riche"
+    "textLength": "Texte ({{count}} car.)",
+    "richTextLength": "Texte enrichi ({{count}} car.)"
   },
   "folders": {
     "all": "Tous les éléments",
@@ -84,6 +84,8 @@
     "pasteMethodDesc": "Choisissez le raccourci simulé pour le collage automatique",
     "pasteMethodShiftInsert": "Shift + Insert",
     "pasteMethodCtrlV": "Ctrl + V",
+    "moveToTopOnPaste": "Placer en tête après collage",
+    "moveToTopOnPasteDesc": "Déplacer automatiquement un élément en haut de la liste après l'avoir collé",
     "preserveFormatting": "Conserver la mise en forme",
     "preserveFormattingDesc": "Conserver les formats HTML et texte enrichi lors de la copie et du collage",
     "ignoreGhostClips": "Ignorer les éléments fantômes",
@@ -121,6 +123,7 @@
     "aiFixGrammarPlaceholder": "Par défaut : Vous êtes un assistant utile. Corrigez la grammaire et améliorez le style...",
     "newFolderPlaceholder": "Nom du nouveau dossier",
     "noFolders": "Aucun dossier personnalisé créé.",
+    "moreWorks": "Autres projets",
     "checkForUpdates": "Vérifier les mises à jour",
     "checkingUpdates": "Vérification des mises à jour...",
     "updateAvailable": "Mise à jour disponible ! Version {{version}}",

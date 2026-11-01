@@ -17,8 +17,8 @@
     "emptyDesc": "Kopieren Sie etwas in Ihre Zwischenablage, dann erscheint es hier.",
     "loadingClips": "Einträge werden geladen...",
     "imageSize": "Bild ({{size}} KB)",
-    "textLength": "{{count}} Zeichen",
-    "richTextBadge": "Format"
+    "textLength": "Text ({{count}} Zeichen)",
+    "richTextLength": "Rich-Text ({{count}} Zeichen)"
   },
   "folders": {
     "all": "Alle Einträge",
@@ -84,6 +84,8 @@
     "pasteMethodDesc": "Wählen Sie den für das automatische Einfügen simulierten Kurzbefehl",
     "pasteMethodShiftInsert": "Shift + Insert",
     "pasteMethodCtrlV": "Ctrl + V",
+    "moveToTopOnPaste": "Nach Einfügen nach oben verschieben",
+    "moveToTopOnPasteDesc": "Eingefügte Einträge automatisch an den Anfang der Liste setzen",
     "preserveFormatting": "Formatierung beibehalten",
     "preserveFormattingDesc": "HTML- und Rich-Text-Formate beim Kopieren und Einfügen beibehalten",
     "ignoreGhostClips": "Geistereinträge ignorieren",
@@ -121,6 +123,7 @@
     "aiFixGrammarPlaceholder": "Standard: Sie sind ein hilfreicher Assistent. Korrigieren Sie die Grammatik und verbessern Sie den Stil...",
     "newFolderPlaceholder": "Neuer Ordnername",
     "noFolders": "Keine benutzerdefinierten Ordner erstellt.",
+    "moreWorks": "Weitere Projekte",
     "checkForUpdates": "Nach Updates suchen",
     "checkingUpdates": "Suche nach Updates...",
     "updateAvailable": "Update verfügbar! Version {{version}}",

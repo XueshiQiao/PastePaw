@@ -17,8 +17,8 @@
     "emptyDesc": "复制内容后将显示在这里",
     "loadingClips": "加载中...",
     "imageSize": "图片 ({{size}}KB)",
-    "textLength": "{{count}} 个字符",
-    "richTextBadge": "富文本"
+    "textLength": "文本 ({{count}} 个字符)",
+    "richTextLength": "富文本 ({{count}} 个字符)"
   },
   "folders": {
     "all": "全部",
@@ -84,6 +84,8 @@
     "pasteMethodDesc": "选择自动粘贴时模拟的快捷键",
     "pasteMethodShiftInsert": "Shift + Insert",
     "pasteMethodCtrlV": "Ctrl + V",
+    "moveToTopOnPaste": "粘贴后自动置顶",
+    "moveToTopOnPasteDesc": "粘贴历史记录后自动将该条目移到列表首位",
     "preserveFormatting": "保留富文本格式",
     "preserveFormattingDesc": "保存并恢复剪贴板中的 HTML / 富文本格式（支持粘贴到 Typora 等编辑器保留 Markdown）",
     "ignoreGhostClips": "忽略临时剪贴",
@@ -121,6 +123,7 @@
     "aiFixGrammarPlaceholder": "默认：你是一个有用的助手。修正语法并改进风格...",
     "newFolderPlaceholder": "新文件夹名称",
     "noFolders": "尚未创建自定义文件夹。",
+    "moreWorks": "更多作品",
     "checkForUpdates": "检查更新",
     "checkingUpdates": "正在检查更新...",
     "updateAvailable": "有可用更新！版本 {{version}}",

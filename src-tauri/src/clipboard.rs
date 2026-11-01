@@ -324,10 +324,19 @@ async fn process_clipboard_change(
     }
 
     // Check ignore self-paste
+    let mut is_self_paste = false;
     {
         let mut lock = IGNORE_HASH.lock();
         if let Some(ignore_hash) = lock.take() {
             if ignore_hash == clip_hash {
+                is_self_paste = true;
+                if !settings.move_to_top_on_paste {
+                    log::info!(
+                        "CLIPBOARD: Ignoring self-paste timestamp update for hash {} (move_to_top_on_paste=false)",
+                        ignore_hash
+                    );
+                    return;
+                }
                 log::info!(
                     "CLIPBOARD: Detected self-paste for hash {}, proceeding to update timestamp",
                     ignore_hash
@@ -397,12 +406,36 @@ async fn process_clipboard_change(
     let has_html = rich_html_content.is_some();
     let has_rtf = rich_rtf_content.is_some();
 
+    let is_own_app = exe_name
+        .as_deref()
+        .map(|e| {
+            e.eq_ignore_ascii_case("PastePaw.exe") || e.eq_ignore_ascii_case("msedgewebview2.exe")
+        })
+        .unwrap_or(false);
+
     let db_write_started = std::time::Instant::now();
     let emitted_id = if let Some((existing_id, existing_meta)) = existing_clip {
-        was_existing = true;
-        if clip_type == "image" {
+        if is_self_paste || is_own_app {
+            if !settings.move_to_top_on_paste {
+                log::info!(
+                    "CLIPBOARD: Skipping bump for existing clip {} from own paste (move_to_top_on_paste=false)",
+                    existing_id
+                );
+                return;
+            }
+            was_existing = true;
             let _ = sqlx::query(
-                r#"
+                r#"UPDATE clips SET created_at = CURRENT_TIMESTAMP, is_deleted = 0 WHERE uuid = ?"#,
+            )
+            .bind(&existing_id)
+            .execute(pool)
+            .await;
+            existing_id
+        } else {
+            was_existing = true;
+            if clip_type == "image" {
+                let _ = sqlx::query(
+                    r#"
                 UPDATE clips
                 SET created_at = CURRENT_TIMESTAMP,
                     is_deleted = 0,
@@ -414,20 +447,20 @@ async fn process_clipboard_change(
                     is_thumbnail = 0
                 WHERE uuid = ?
                 "#,
-            )
-            .bind(&source_app)
-            .bind(&source_icon)
-            .bind(&clip_content)
-            .bind(&clip_preview)
-            .bind(Some(metadata.clone()))
-            .bind(&existing_id)
-            .execute(pool)
-            .await;
+                )
+                .bind(&source_app)
+                .bind(&source_icon)
+                .bind(&clip_content)
+                .bind(&clip_preview)
+                .bind(Some(metadata.clone()))
+                .bind(&existing_id)
+                .execute(pool)
+                .await;
 
-            if let Some(full_bytes) = &full_image_content {
-                match persist_full_image_file(&existing_id, full_bytes) {
-                    Ok(file_path) => {
-                        let _ = sqlx::query(
+                if let Some(full_bytes) = &full_image_content {
+                    match persist_full_image_file(&existing_id, full_bytes) {
+                        Ok(file_path) => {
+                            let _ = sqlx::query(
                             r#"
                             INSERT OR REPLACE INTO clip_images (clip_uuid, full_content, file_path, file_size, storage_kind, mime_type, created_at)
                             VALUES (?, x'', ?, ?, 'file', 'image/png', CURRENT_TIMESTAMP)
@@ -438,19 +471,19 @@ async fn process_clipboard_change(
                         .bind(full_bytes.len() as i64)
                         .execute(pool)
                         .await;
-                    }
-                    Err(e) => {
-                        log::error!(
-                            "Failed to persist full image file for existing clip {}: {}",
-                            existing_id,
-                            e
-                        );
+                        }
+                        Err(e) => {
+                            log::error!(
+                                "Failed to persist full image file for existing clip {}: {}",
+                                existing_id,
+                                e
+                            );
+                        }
                     }
                 }
-            }
-        } else {
-            let updated_meta = build_text_metadata(existing_meta.as_deref(), has_html, has_rtf);
-            let _ = sqlx::query(
+            } else {
+                let updated_meta = build_text_metadata(existing_meta.as_deref(), has_html, has_rtf);
+                let _ = sqlx::query(
                 r#"UPDATE clips SET created_at = CURRENT_TIMESTAMP, is_deleted = 0, source_app = ?, source_icon = ?, metadata = ? WHERE uuid = ?"#,
             )
             .bind(&source_app)
@@ -460,8 +493,8 @@ async fn process_clipboard_change(
             .execute(pool)
             .await;
 
-            if has_html || has_rtf {
-                let _ = sqlx::query(
+                if has_html || has_rtf {
+                    let _ = sqlx::query(
                     r#"
                     INSERT OR REPLACE INTO clip_formats (clip_uuid, html_content, rtf_content, created_at)
                     VALUES (?, ?, ?, CURRENT_TIMESTAMP)
@@ -472,14 +505,15 @@ async fn process_clipboard_change(
                 .bind(&rich_rtf_content)
                 .execute(pool)
                 .await;
-            } else {
-                let _ = sqlx::query(r#"DELETE FROM clip_formats WHERE clip_uuid = ?"#)
-                    .bind(&existing_id)
-                    .execute(pool)
-                    .await;
+                } else {
+                    let _ = sqlx::query(r#"DELETE FROM clip_formats WHERE clip_uuid = ?"#)
+                        .bind(&existing_id)
+                        .execute(pool)
+                        .await;
+                }
             }
+            existing_id
         }
-        existing_id
     } else {
         let clip_uuid = Uuid::new_v4().to_string();
         let initial_meta = if clip_type == "image" {

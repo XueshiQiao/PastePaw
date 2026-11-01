@@ -17,8 +17,8 @@
     "emptyDesc": "Copy something to your clipboard and it will appear here.",
     "loadingClips": "Loading clips...",
     "imageSize": "Image ({{size}}KB)",
-    "textLength": "{{count}} characters",
-    "richTextBadge": "Rich"
+    "textLength": "Text ({{count}} chars)",
+    "richTextLength": "Rich Text ({{count}} chars)"
   },
   "folders": {
     "all": "All Clips",
@@ -84,6 +84,8 @@
     "pasteMethodDesc": "Choose the shortcut simulated for auto-pasting",
     "pasteMethodShiftInsert": "Shift + Insert",
     "pasteMethodCtrlV": "Ctrl + V",
+    "moveToTopOnPaste": "Move to Top on Paste",
+    "moveToTopOnPasteDesc": "Automatically move a clip to the top of the list after pasting it",
     "preserveFormatting": "Preserve Rich Formatting",
     "preserveFormattingDesc": "Save and restore HTML / Rich Text formats (preserves Markdown in editors like Typora)",
     "ignoreGhostClips": "Ignore Ghost Clips",
@@ -121,6 +123,7 @@
     "aiFixGrammarPlaceholder": "Default: You are a helpful assistant. Fix the grammar and improve the style...",
     "newFolderPlaceholder": "New Folder Name",
     "noFolders": "No custom folders created.",
+    "moreWorks": "More by Author",
     "checkForUpdates": "Check for Updates",
     "checkingUpdates": "Checking for updates...",
     "updateAvailable": "Update available! Version {{version}}",
