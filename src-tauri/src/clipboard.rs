@@ -40,8 +40,10 @@ use windows::Win32::System::ProcessStatus::{GetModuleBaseNameW, GetModuleFileNam
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    MapVirtualKeyW, SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
-    KEYEVENTF_KEYUP, MAPVK_VK_TO_VSC, VIRTUAL_KEY, VK_CONTROL, VK_INSERT, VK_SHIFT,
+    GetAsyncKeyState, MapVirtualKeyW, SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT,
+    KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, MAPVK_VK_TO_VSC, VIRTUAL_KEY, VK_CONTROL, VK_INSERT,
+    VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_RCONTROL, VK_RMENU, VK_RSHIFT, VK_RWIN,
+    VK_SHIFT,
 };
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Shell::{
@@ -939,19 +941,50 @@ unsafe fn extract_icon(path: &str) -> Option<String> {
     Some(BASE64.encode(&png_data))
 }
 
+unsafe fn wait_for_modifier_keys_release(timeout_ms: u64) {
+    let modifiers = [
+        VK_CONTROL,
+        VK_LCONTROL,
+        VK_RCONTROL,
+        VK_SHIFT,
+        VK_LSHIFT,
+        VK_RSHIFT,
+        VK_MENU,
+        VK_LMENU,
+        VK_RMENU,
+        VK_LWIN,
+        VK_RWIN,
+    ];
+
+    let started = std::time::Instant::now();
+    loop {
+        let any_down = modifiers
+            .iter()
+            .any(|vk| (GetAsyncKeyState(vk.0 as i32) as u16 & 0x8000) != 0);
+        if !any_down || started.elapsed().as_millis() as u64 >= timeout_ms {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
+
 #[cfg(target_os = "windows")]
 pub fn send_paste_input(method: &str) {
     unsafe {
+        // Wait briefly for physical hotkey modifiers (e.g. Ctrl/Shift/Alt) to be released
+        // so they don't collide with or cancel out the synthesized paste chord.
+        wait_for_modifier_keys_release(350);
+
         let inputs = if method == "ctrl_v" {
             log::info!("send_paste_input: sending Ctrl+V");
-            let ctrl_scan = MapVirtualKeyW(VK_CONTROL.0 as u32, MAPVK_VK_TO_VSC) as u16;
+            let ctrl_scan = MapVirtualKeyW(VK_LCONTROL.0 as u32, MAPVK_VK_TO_VSC) as u16;
             let v_scan = MapVirtualKeyW(0x56, MAPVK_VK_TO_VSC) as u16;
             vec![
                 INPUT {
                     r#type: INPUT_KEYBOARD,
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
-                            wVk: VK_CONTROL,
+                            wVk: VK_LCONTROL,
                             wScan: ctrl_scan,
                             ..Default::default()
                         },
@@ -982,7 +1015,7 @@ pub fn send_paste_input(method: &str) {
                     r#type: INPUT_KEYBOARD,
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
-                            wVk: VK_CONTROL,
+                            wVk: VK_LCONTROL,
                             wScan: ctrl_scan,
                             dwFlags: KEYEVENTF_KEYUP,
                             ..Default::default()
@@ -992,14 +1025,14 @@ pub fn send_paste_input(method: &str) {
             ]
         } else {
             log::info!("send_paste_input: sending Shift+Insert (with KEYEVENTF_EXTENDEDKEY)");
-            let shift_scan = MapVirtualKeyW(VK_SHIFT.0 as u32, MAPVK_VK_TO_VSC) as u16;
+            let shift_scan = MapVirtualKeyW(VK_LSHIFT.0 as u32, MAPVK_VK_TO_VSC) as u16;
             let insert_scan = MapVirtualKeyW(VK_INSERT.0 as u32, MAPVK_VK_TO_VSC) as u16;
             vec![
                 INPUT {
                     r#type: INPUT_KEYBOARD,
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
-                            wVk: VK_SHIFT,
+                            wVk: VK_LSHIFT,
                             wScan: shift_scan,
                             ..Default::default()
                         },
@@ -1031,7 +1064,7 @@ pub fn send_paste_input(method: &str) {
                     r#type: INPUT_KEYBOARD,
                     Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
                         ki: KEYBDINPUT {
-                            wVk: VK_SHIFT,
+                            wVk: VK_LSHIFT,
                             wScan: shift_scan,
                             dwFlags: KEYEVENTF_KEYUP,
                             ..Default::default()

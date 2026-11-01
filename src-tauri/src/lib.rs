@@ -1,6 +1,6 @@
 #![allow(non_snake_case)] // crate name PastePaw is intentional
 use std::fs;
-use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicIsize, Ordering};
 use std::sync::Arc;
 use tauri::{
     image::Image,
@@ -15,6 +15,67 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 static IS_ANIMATING: AtomicBool = AtomicBool::new(false);
 static LAST_SHOW_TIME: AtomicI64 = AtomicI64::new(0);
+static LAST_TARGET_HWND: AtomicIsize = AtomicIsize::new(0);
+
+fn capture_previous_foreground_window() {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetClassNameW, GetForegroundWindow, GetWindowThreadProcessId,
+    };
+
+    unsafe {
+        let fg = GetForegroundWindow();
+        if fg.0.is_null() {
+            return;
+        }
+
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(fg, Some(&mut pid));
+        if pid == 0 || pid == std::process::id() {
+            return;
+        }
+
+        let mut class_buf = [0u16; 128];
+        let len = GetClassNameW(fg, &mut class_buf) as usize;
+        if len > 0 {
+            let class_name = String::from_utf16_lossy(&class_buf[..len]);
+            if matches!(
+                class_name.as_str(),
+                "Shell_TrayWnd" | "SecondaryTrayWnd" | "NotifyIconOverflowWindow"
+            ) {
+                return;
+            }
+        }
+
+        LAST_TARGET_HWND.store(fg.0 as isize, Ordering::SeqCst);
+    }
+}
+
+pub fn restore_previous_foreground_window() {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, IsIconic, IsWindow, IsWindowVisible, SetForegroundWindow,
+    };
+
+    let raw = LAST_TARGET_HWND.load(Ordering::SeqCst);
+    if raw == 0 {
+        return;
+    }
+
+    let target = HWND(raw as _);
+    unsafe {
+        if !IsWindow(Some(target)).as_bool()
+            || !IsWindowVisible(target).as_bool()
+            || IsIconic(target).as_bool()
+        {
+            return;
+        }
+
+        if GetForegroundWindow() != target {
+            let ok = SetForegroundWindow(target).as_bool();
+            log::info!("Restored previous foreground window {:?}: {}", target, ok);
+        }
+    }
+}
 
 mod ai;
 mod clipboard;
@@ -381,6 +442,8 @@ pub fn get_effective_theme(window: &tauri::WebviewWindow, theme_setting: &str) -
 }
 
 pub fn position_window_at_bottom(window: &tauri::WebviewWindow) {
+    capture_previous_foreground_window();
+
     let (mica_effect, theme_setting, round_corners) = {
         let manager = window.state::<Arc<crate::settings_manager::SettingsManager>>();
         let s = manager.get();

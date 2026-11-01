@@ -629,13 +629,13 @@ pub async fn paste_clip(
 
                 if auto_paste {
                     // Auto-Paste Logic
-                    // 1. Hide window immediately to trigger focus switch to previous app
+                    // 1. Hide window immediately, then explicitly restore target foreground window
                     crate::animate_window_hide(
                         &window,
                         Some(Box::new(move || {
-                            // 2. Callback executed AFTER window is hidden
-                            // Small buffer to ensure OS focus switch is complete
-                            std::thread::sleep(std::time::Duration::from_millis(200));
+                            // 2. Callback executed immediately AFTER window is hidden
+                            crate::restore_previous_foreground_window();
+                            std::thread::sleep(std::time::Duration::from_millis(120));
                             crate::clipboard::send_paste_input(&paste_method);
                         })),
                     );
