@@ -2,6 +2,40 @@
 
 All notable changes to PastePaw will be documented in this file.
 
+## v1.6.0
+
+### Added
+- **Rich Text & HTML Formatting Support**: Automatically captures and restores Rich Text (`RTF`) and `HTML Format` alongside plain text when copying from browsers, Office apps, and rich editors (#16).
+- **Formatting Controls**: Added a "Preserve Rich Text & HTML Formatting" toggle in Settings (enabled by default) and a "Paste as Plain Text" option in the card context menu (#16).
+- **Configurable Move to Top on Paste**: Added a "Move to Top on Paste" setting (enabled by default) to control whether pasting an existing history item bumps it to the top of the list (#12).
+- **Author Portfolio Link**: Added a direct link to the author's portfolio (`https://xueshi.dev`) in the Settings footer and documentation.
+
+### Changed
+- **Refreshed App Icon**: Updated the Windows application icon across all resolutions to the new vibrant sky-blue PastePaw design.
+- **Smooth Squircle Cards**: Upgraded clipboard cards and drag previews to continuous-curvature superellipse corners (`corner-shape: squircle`) with automatic fallback for older WebView2 runtimes.
+- **Unified Card Footer Metadata**: Standardized bottom-left card footer labels across all 5 languages to display content type and character/file size (`Text`, `Rich Text`, `Image`).
+
+### Fixed
+- **Auto-Paste Focus & Modifier Reliability**: Explicitly restores foreground focus to the target application window after hiding PastePaw and waits for physical modifier keys to release before simulating `Shift + Insert` / `Ctrl + V` (#13).
+- **Paste List Sync & Image Metadata**: Fixed clipboard list synchronization when bumping pasted items to the top, reset card selection cleanly on window reopen, and preserved original `source_app` metadata when pasting images (#12).
+- **Updater Release Notes**: Passed extracted changelog notes into CI updater artifact generation so `latest.json` includes version release notes.
+
+### 新增
+- **保留富文本与 HTML 格式**：从浏览器、Office 文档或富文本编辑器复制内容时，支持同时捕获并在粘贴时还原 `RTF` 与 `HTML` 富文本格式 (#16)。
+- **富文本控制项**：在设置页新增“保留富文本与 HTML 格式”开关（默认开启），并在卡片右键菜单中新增“粘贴为纯文本”选项 (#16)。
+- **粘贴后自动置顶开关**：在设置页新增“粘贴后自动置顶”配置项（默认开启），可自由控制粘贴历史记录后是否将其移至列表最前面 (#12)。
+- **个人作品页入口**：在设置窗口页脚及文档中新增作者更多作品链接（`https://xueshi.dev`）。
+
+### 修改
+- **全新应用图标**：将 Windows 版全尺寸应用图标同步更新为全新的天空蓝渐变猫爪图标。
+- **超椭圆平滑圆角卡片（Squircle）**：剪贴板卡片与拖拽预览升级为 G2 曲率连续的超椭圆平滑圆角（`corner-shape: squircle`），并对旧版 WebView2 提供自动圆角兜底。
+- **统一卡片左下角信息标签**：统一所有类型卡片左下角的角标格式（支持 5 国语言），清晰展示“文本 (N 个字符)”、“富文本 (N 个字符)”与“图片 (N KB)”。
+
+### 修复
+- **自动粘贴焦点与修饰键可靠性**：隐藏主窗口后显式恢复目标应用的前台窗口焦点，并在模拟 `Shift + Insert` / `Ctrl + V` 前等待物理修饰键释放，避免快捷键粘连导致粘贴失效 (#13)。
+- **粘贴置顶同步与图片元数据保留**：修复粘贴置顶后前端列表即时刷新与唤出窗口时的首项选中重置逻辑，并避免粘贴图片时覆盖原始来源应用（`source_app`）信息 (#12)。
+- **应用内更新日志显示**：修复 CI 构建 `latest.json` 时未注入版本更新说明的问题。
+
 ## v1.5.0
 
 ### Added
