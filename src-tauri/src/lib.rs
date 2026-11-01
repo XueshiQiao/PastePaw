@@ -6,7 +6,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{TrayIcon, TrayIconBuilder},
-    Manager,
+    Emitter, Manager,
 };
 use tauri_plugin_aptabase::EventTracker;
 #[cfg(not(feature = "app-store"))]
@@ -388,6 +388,7 @@ pub fn position_window_at_bottom(window: &tauri::WebviewWindow) {
     };
     let effective_theme = get_effective_theme(window, &theme_setting);
     apply_window_effect(window, &mica_effect, &effective_theme, round_corners);
+    let _ = window.emit("window-shown", ());
 
     animate_window_show(window);
 }

@@ -616,6 +616,7 @@ pub async fn paste_clip(
                     String::from_utf8_lossy(&clip.content).to_string()
                 };
                 let _ = window.emit("clipboard-write", &content);
+                let _ = app.emit("clipboard-change", ());
 
                 // Check auto_paste setting
                 let auto_paste = settings.auto_paste;

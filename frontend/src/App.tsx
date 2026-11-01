@@ -105,24 +105,16 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const handleFocus = () => {
+    const unlistenShownPromise = listen('window-shown', () => {
       resetToFirstClip();
-    };
-
-    window.addEventListener('focus', handleFocus);
-    const unlistenFocusPromise = appWindow.onFocusChanged(({ payload: focused }) => {
-      if (focused) {
-        resetToFirstClip();
-      }
     });
 
     return () => {
-      window.removeEventListener('focus', handleFocus);
-      unlistenFocusPromise.then((unlisten) => {
+      unlistenShownPromise.then((unlisten) => {
         if (typeof unlisten === 'function') unlisten();
       });
     };
-  }, [resetToFirstClip, appWindow]);
+  }, [resetToFirstClip]);
 
   useEffect(() => {
     invoke<Settings>('get_settings')
