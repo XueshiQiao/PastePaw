@@ -215,11 +215,40 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Run a pinned komac directly instead of vedantmgoyal9/winget-releaser, which always installs
+      # the latest komac. komac 2.17+ adds an AppsAndFeaturesEntries DisplayVersion equal to
+      # PackageVersion for our NSIS installer, and winget-pkgs asks for it to be removed
+      # (microsoft/winget-pkgs#467920). The commands below mirror what winget-releaser runs.
+      - name: Install komac
+        run: |
+          KOMAC_VERSION=2.16.0
+          KOMAC_SHA256=7d2707fa6210f2789a3702de49fbd150b736dbf426ee0b9bc8e098736f9fd82d
+          curl -fsSL -o "$RUNNER_TEMP/komac.tar.gz" \
+            "https://github.com/russellbanks/Komac/releases/download/v${KOMAC_VERSION}/komac-${KOMAC_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${KOMAC_SHA256}  $RUNNER_TEMP/komac.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/komac"
+          tar xzf "$RUNNER_TEMP/komac.tar.gz" -C "$RUNNER_TEMP/komac"
+          "$RUNNER_TEMP/komac/komac" --version
+          echo "$RUNNER_TEMP/komac" >> "$GITHUB_PATH"
+
       - name: Publish to winget-pkgs
-        uses: vedantmgoyal9/winget-releaser@v2
-        with:
-          identifier: XueshiQiao.PastePaw
-          installers-regex: '.*-setup\.exe$'
-          release-tag: ${{ github.ref_name }}
-          token: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          RAW_URLS=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+            --jq '.assets[] | select(.name | test("-setup\\.exe$")) | .browser_download_url')
+          mapfile -t URLS <<< "$RAW_URLS"
+          if [ "${#URLS[@]}" -ne 2 ]; then
+            echo "ERROR: expected 2 *-setup.exe assets (x64 + arm64), found ${#URLS[@]}:"
+            printf '  %s\n' "${URLS[@]}"
+            exit 1
+          fi
+
+          komac sync-fork
+          komac update XueshiQiao.PastePaw --version "$VERSION" --urls "${URLS[@]}" --submit
+          # The PR is already submitted at this point; don't fail the job (and invite a re-run) over cleanup.
+          komac cleanup --only-merged || echo "::warning::komac cleanup failed"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          KOMAC_FORK_OWNER: ${{ github.repository_owner }}
 
